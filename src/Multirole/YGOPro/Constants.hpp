@@ -13,6 +13,10 @@
 #define LOCATION_FZONE   0x100
 #define LOCATION_PZONE   0x200
 #define LOCATION_ALL     0x3FF
+/////kdiy///////////
+#define LOCATION_RMZONE  0x400
+#define LOCATION_RSZONE  0x800
+/////kdiy///////////
 
 #define MSG_RETRY                1
 #define MSG_HINT                 2

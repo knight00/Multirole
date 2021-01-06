@@ -85,6 +85,10 @@ StateOpt Context::operator()(State::Dueling& s)
 	X(EXTRA_RULE_COMMAND_DUEL,       95200000U);  // NOLINT
 	X(EXTRA_RULE_DECK_MASTER,        300U);       // NOLINT
 	X(EXTRA_RULE_ACTION_DUEL,        151999999U); // NOLINT
+	///////kdiy/////////
+	X(EXTRA_RULE_KCG_System,         85U);
+	X(EXTRA_RULE_Field_System,       86U);
+	///////kdiy/////////
 #undef X
 	// Construct replay.
 	s.replayId = replayManager.NewId();
@@ -127,6 +131,9 @@ StateOpt Context::operator()(State::Dueling& s)
 		};
 		LoadScript("constant.lua");
 		LoadScript("utility.lua");
+		////kdiy////////////
+		LoadScript("proc_fun.lua");
+		////kdiy////////////
 	}
 	catch(Core::Exception& e)
 	{

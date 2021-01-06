@@ -175,6 +175,11 @@ const OCG_CardData& CardDatabase::DataFromCode(uint32_t code) const
 		cd.link_marker = (cd.type & TYPE_LINK) != 0U ? cd.defense : 0;
 		cd.defense = (cd.type & TYPE_LINK) != 0U ? 0 : cd.defense;
 		const auto dbLevel = sqlite3_column_int(sStmt, 6);
+		/////////////kdiy///////
+		if ((dbLevel & 0x800000FF) > 0xf) {
+			cd.level = -((dbLevel & 0x800000FF) - 0xf);
+		} else
+		/////////////kdiy///////		
 		cd.level = dbLevel & 0x800000FF;
 		cd.lscale = (dbLevel >> 24U) & 0xFF;
 		cd.rscale = (dbLevel >> 16U) & 0xFF;

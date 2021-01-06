@@ -30,6 +30,10 @@ enum ExtraRule
 	EXTRA_RULE_DECK_MASTER         = 0x800,
 	EXTRA_RULE_ACTION_DUEL         = 0x1000,
 	EXTRA_RULE_DECK_LIMIT_20       = 0x2000,
+	////kdiy///////
+	EXTRA_RULE_KCG_System          = 0x4000,
+	EXTRA_RULE_Field_System        = 0x8000
+	////kdiy///////	
 };
 
 struct ClientVersion

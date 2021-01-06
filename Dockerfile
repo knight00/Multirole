@@ -1,21 +1,8 @@
 FROM ubuntu:20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && \
-	apt-get install -y --no-install-recommends \
-		build-essential \
-		cmake \
-		pkg-config \
-		libasio-dev \
-		libboost-date-time-dev \
-		libboost-dev \
-		libfmt-dev \
-		libgit2-dev \
-		nlohmann-json3-dev \
-		meson \
-		ninja-build \
-		libspdlog-dev \
-		libsqlite3-dev && \
+RUN sudo apt-get update && \
+	sudo apt-get install -y --no-install-recommends build-essential cmake pkg-config libasio-dev libboost-date-time-dev libboost-dev libfmt-dev libgit2-dev nlohmann-json3-dev meson ninja-build libspdlog-dev libsqlite3-dev && \
 	rm -rf /var/lib/apt/lists/*
 
 #RUN wget https://github.com/Kitware/CMake/releases/download/v3.17.3/cmake-3.17.3-Linux-x86_64.sh \
