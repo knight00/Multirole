@@ -27,6 +27,10 @@ LobbyListing::LobbyListing(
 	DoSerialize();
 }
 
+// NOTE: Without this debug builds in visual studio crash without reason.
+LobbyListing::~LobbyListing()
+{}
+
 void LobbyListing::Stop()
 {
 	acceptor.close();
@@ -38,7 +42,7 @@ void LobbyListing::Stop()
 void LobbyListing::DoSerialize()
 {
 	serializeTimer.expires_after(std::chrono::seconds(2));
-	serializeTimer.async_wait([this](const std::error_code& ec)
+	serializeTimer.async_wait([this](std::error_code ec)
 	{
 		if(ec)
 			return;
@@ -105,12 +109,13 @@ void LobbyListing::DoAccept()
 	{
 		if(!acceptor.is_open())
 			return;
+		if(!ec)
+		{
+			Workaround::SetCloseOnExec(socket.native_handle());
+			std::scoped_lock lock(mSerialized);
+			std::make_shared<Connection>(std::move(socket), serialized)->DoRead();
+		}
 		DoAccept();
-		if(ec)
-			return;
-		Workaround::SetCloseOnExec(socket.native_handle());
-		std::scoped_lock lock(mSerialized);
-		std::make_shared<Connection>(std::move(socket), serialized)->DoRead();
 	});
 }
 
@@ -128,21 +133,16 @@ void LobbyListing::Connection::DoRead()
 {
 	auto self(shared_from_this());
 	socket.async_read_some(asio::buffer(incoming),
-	[this, self](const std::error_code& ec, std::size_t /*unused*/)
+	[this, self](std::error_code ec, std::size_t /*unused*/)
 	{
-		if(!ec)
+		if(ec)
+			return;
+		if(!writeCalled)
 		{
-			if(!writeCalled)
-			{
-				writeCalled = true;
-				DoWrite();
-			}
-			DoRead();
+			writeCalled = true;
+			DoWrite();
 		}
-		else if(ec != asio::error::operation_aborted && socket.is_open())
-		{
-			socket.close();
-		}
+		DoRead();
 	});
 }
 

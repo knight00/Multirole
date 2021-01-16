@@ -18,6 +18,8 @@ class LobbyListing final
 {
 public:
 	LobbyListing(asio::io_context& ioCtx, unsigned short port, Lobby& lobby);
+	~LobbyListing();
+
 	void Stop();
 private:
 	class Connection final : public std::enable_shared_from_this<Connection>

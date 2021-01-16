@@ -141,11 +141,12 @@ void RoomHosting::DoAccept()
 	{
 		if(!acceptor.is_open())
 			return;
+		if(!ec)
+		{
+			Workaround::SetCloseOnExec(socket.native_handle());
+			std::make_shared<Connection>(*this, std::move(socket))->DoReadHeader();
+		}
 		DoAccept();
-		if(ec)
-			return;
-		Workaround::SetCloseOnExec(socket.native_handle());
-		std::make_shared<Connection>(*this, std::move(socket))->DoReadHeader();
 	});
 }
 
@@ -166,7 +167,7 @@ void RoomHosting::Connection::DoReadHeader()
 	auto self(shared_from_this());
 	auto buffer = asio::buffer(incoming.Data(), YGOPro::CTOSMsg::HEADER_LENGTH);
 	asio::async_read(socket, buffer,
-	[this, self](const std::error_code& ec, std::size_t /*unused*/)
+	[this, self](std::error_code ec, std::size_t /*unused*/)
 	{
 		if(!ec && incoming.IsHeaderValid())
 			DoReadBody();
@@ -178,15 +179,31 @@ void RoomHosting::Connection::DoReadBody()
 	auto self(shared_from_this());
 	auto buffer = asio::buffer(incoming.Body(), incoming.GetLength());
 	asio::async_read(socket, buffer,
-	[this, self](const std::error_code& ec, std::size_t /*unused*/)
+	[this, self](std::error_code ec, std::size_t /*unused*/)
 	{
 		if(ec)
 			return;
-		const auto status = HandleMsg();
-		if(status != Status::STATUS_MOVED)
+		if(const auto status = HandleMsg(); status == Status::STATUS_CONTINUE)
+		{
 			DoReadHeader();
-		if(status == Status::STATUS_ERROR)
+		}
+		else if(status == Status::STATUS_ERROR)
+		{
+			DoReadEnd();
 			DoWrite();
+		}
+	});
+}
+
+void RoomHosting::Connection::DoReadEnd()
+{
+	auto self(shared_from_this());
+	auto buffer = asio::buffer(incoming.Data(), YGOPro::CTOSMsg::MSG_MAX_LENGTH);
+	socket.async_read_some(buffer,
+	[this, self](std::error_code ec, std::size_t /*unused*/)
+	{
+		if(!ec)
+			DoReadEnd();
 	});
 }
 
@@ -236,7 +253,7 @@ RoomHosting::Connection::Status RoomHosting::Connection::HandleMsg()
 			PushToWriteQueue(PrebuiltMsgId::PREBUILT_MSG_VERSION_MISMATCH);
 			return Status::STATUS_ERROR;
 		}
-		p->notes[199] = '\0'; // NOLINT: Guarantee null-terminated string
+		p->notes[199U] = '\0'; // NOLINT: Guarantee null-terminated string
 		// Get base room creation information.
 		auto info = roomHosting.GetBaseRoomCreateInfo(p->hostInfo.banlistHash);
 		// Set our custom info.
@@ -247,11 +264,15 @@ RoomHosting::Connection::Status RoomHosting::Connection::HandleMsg()
 		info.pass = Utf16BufferToStr(p->pass);
 		// Fix some of the options back into expected values in case of
 		// exceptions.
+		auto& hi = info.hostInfo;
 		if(info.banlist == nullptr)
-			info.hostInfo.banlistHash = 0;
-		info.hostInfo.t0Count = std::clamp(info.hostInfo.t0Count, 1, 3);
-		info.hostInfo.t1Count = std::clamp(info.hostInfo.t1Count, 1, 3);
-		info.hostInfo.bestOf = std::max(info.hostInfo.bestOf, 1);
+			hi.banlistHash = 0U;
+		hi.t0Count = std::clamp(hi.t0Count, 1, 3);
+		hi.t1Count = std::clamp(hi.t1Count, 1, 3);
+		hi.bestOf = std::max(hi.bestOf, 1);
+		// Add flag that client should be setting.
+		// NOLINTNEXTLINE: DUEL_PSEUDO_SHUFFLE
+		hi.duelFlagsLow |= (!hi.dontShuffleDeck) ? 0x0 : 0x10;
 		// Make new room with the set parameters
 		auto room = std::make_shared<Room::Instance>(std::move(info));
 		room->RegisterToOwner();
