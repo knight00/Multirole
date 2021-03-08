@@ -1,11 +1,16 @@
-#ifndef COREPROVIDER_HPP
-#define COREPROVIDER_HPP
+#ifndef SERVICE_COREPROVIDER_HPP
+#define SERVICE_COREPROVIDER_HPP
+#include "../Service.hpp"
+
 #include <chrono>
+#include <list>
 #include <regex>
 #include <memory>
 #include <shared_mutex>
 
-#include "IGitRepoObserver.hpp"
+#include <boost/filesystem/path.hpp>
+
+#include "../IGitRepoObserver.hpp"
 
 namespace Ignis::Multirole
 {
@@ -17,7 +22,7 @@ class IWrapper;
 
 } // namespace Core
 
-class CoreProvider final : public IGitRepoObserver
+class Service::CoreProvider final : public IGitRepoObserver
 {
 public:
 	enum class CoreType
@@ -28,7 +33,7 @@ public:
 
 	using CorePtr = std::shared_ptr<Core::IWrapper>;
 
-	CoreProvider(std::string_view fnRegexStr, std::string_view tmpPath, CoreType type, bool loadPerCall);
+	CoreProvider(std::string_view fnRegexStr, std::string_view tmpDirStr, CoreType type, bool loadPerCall);
 	~CoreProvider();
 
 	// Will return a core instance based on the options set.
@@ -39,14 +44,15 @@ public:
 	void OnDiff(std::string_view path, const GitDiff& diff) override;
 private:
 	const std::regex fnRegex;
-	const std::string tmpPath;
+	const boost::filesystem::path tmpDir;
 	const CoreType type;
 	const bool loadPerCall;
 	const std::chrono::system_clock::rep uniqueId;
 	std::size_t loadCount;
 	bool shouldTest;
-	std::string corePath;
+	boost::filesystem::path coreLoc;
 	CorePtr core;
+	std::list<boost::filesystem::path> pLocs; // Previous locations for core file.
 	mutable std::shared_mutex mCore; // used for both corePath and core.
 
 	CorePtr LoadCore() const;
@@ -56,4 +62,4 @@ private:
 
 } // namespace Ignis::Multirole
 
-#endif // COREPROVIDER_HPP
+#endif // SERVICE_COREPROVIDER_HPP

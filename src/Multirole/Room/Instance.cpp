@@ -1,37 +1,22 @@
 #include "Instance.hpp"
 
-#include "../IRoomManager.hpp"
-
 namespace Ignis::Multirole::Room
 {
 
-Instance::Instance(CreateInfo&& info)
+Instance::Instance(CreateInfo& info)
 	:
-	owner(info.owner),
 	strand(info.ioCtx),
 	tagg(*this),
-	ctx({
-		tagg,
-		info.coreProvider,
-		info.replayManager,
-		info.scriptProvider,
-		std::move(info.cdb),
-		std::move(info.hostInfo),
-		std::move(info.limits),
-		std::move(info.banlist)}),
-	state(State::Waiting{nullptr}),
-	name(std::move(info.name)),
 	notes(std::move(info.notes)),
 	pass(std::move(info.pass)),
-	id(0U)
+	isPrivate(!pass.empty()),
+	ctx({info.svc, tagg, info.id, info.seed, std::move(info.banlist), info.hostInfo, info.limits}),
+	state(State::Waiting{nullptr})
 {}
 
-void Instance::RegisterToOwner()
+bool Instance::IsPrivate() const
 {
-	uint32_t seed;
-	std::tie(id, seed) = owner.Add(shared_from_this());
-	ctx.SetId(id);
-	ctx.SetRngSeed(seed);
+	return isPrivate;
 }
 
 bool Instance::Started() const
@@ -39,61 +24,61 @@ bool Instance::Started() const
 	return !std::holds_alternative<State::Waiting>(state);
 }
 
-bool Instance::CheckPassword(std::string_view str) const
+const std::string& Instance::Notes() const
 {
-	return pass.empty() || pass == str;
+	return notes;
 }
 
-bool Instance::CheckKicked(const asio::ip::address& addr) const
+const YGOPro::HostInfo& Instance::HostInfo() const
+{
+	return ctx.HostInfo();
+}
+
+std::map<uint8_t, std::string> Instance::DuelistNames() const
+{
+	return ctx.GetDuelistsNames();
+}
+
+bool Instance::CheckPassword(std::string_view str) const
+{
+	return !isPrivate || pass == str;
+}
+
+bool Instance::CheckKicked(const boost::asio::ip::address& addr) const
 {
 	std::scoped_lock lock(mKicked);
 	return kicked.count(addr) > 0U;
 }
 
-Instance::Properties Instance::GetProperties() const
-{
-	return Properties
-	{
-		ctx.HostInfo(),
-		notes,
-		!pass.empty(),
-		Started(),
-		id,
-		ctx.GetDuelistsNames()
-	};
-}
-
 void Instance::TryClose()
 {
 	auto self(shared_from_this());
-	asio::post(strand,
+	boost::asio::post(strand,
 	[this, self]()
 	{
 		Dispatch(Event::Close{});
 	});
 }
 
-void Instance::AddKicked(const asio::ip::address& addr)
+void Instance::AddKicked(const boost::asio::ip::address& addr)
 {
 	std::scoped_lock lock(mKicked);
 	kicked.insert(addr);
 }
 
-void Instance::Add(std::shared_ptr<Client> client)
+void Instance::Add(const std::shared_ptr<Client>& client)
 {
 	std::scoped_lock lock(mClients);
 	clients.insert(client);
 }
 
-void Instance::Remove(std::shared_ptr<Client> client)
+void Instance::Remove(const std::shared_ptr<Client>& client)
 {
 	std::scoped_lock lock(mClients);
 	clients.erase(client);
-	if(clients.empty())
-		owner.Remove(id);
 }
 
-asio::io_context::strand& Instance::Strand()
+boost::asio::io_context::strand& Instance::Strand()
 {
 	return strand;
 }

@@ -3,10 +3,10 @@
 #include <spdlog/spdlog.h>
 
 #include "../TimerAggregator.hpp"
-#include "../../CardDatabase.hpp"
-#include "../../ReplayManager.hpp"
-#include "../../ScriptProvider.hpp"
 #include "../../Core/IWrapper.hpp"
+#include "../../Service/ReplayManager.hpp"
+#include "../../Service/ScriptProvider.hpp"
+#include "../../YGOPro/CardDatabase.hpp"
 #include "../../YGOPro/Constants.hpp"
 #include "../../YGOPro/CoreUtils.hpp"
 
@@ -86,7 +86,7 @@ StateOpt Context::operator()(State::Dueling& s)
 	///////kdiy/////////
 #undef X
 	// Construct replay.
-	s.replayId = replayManager.NewId();
+	s.replayId = svc.replayManager.NewId();
 	auto CurrentTime = []()
 	{
 		using namespace std::chrono;
@@ -109,7 +109,7 @@ StateOpt Context::operator()(State::Dueling& s)
 	const Core::IWrapper::DuelOptions dopts =
 	{
 		*cdb,
-		scriptProvider,
+		svc.scriptProvider,
 		nullptr, // TODO
 		seed,
 		HostInfo::OrDuelFlags(hostInfo.duelFlagsHigh, hostInfo.duelFlagsLow),
@@ -121,7 +121,7 @@ StateOpt Context::operator()(State::Dueling& s)
 		s.duelPtr = s.core->CreateDuel(dopts);
 		auto LoadScript = [&](std::string_view file)
 		{
-			if(auto scr = scriptProvider.ScriptFromFilePath(file); !scr.empty())
+			if(auto scr = svc.scriptProvider.ScriptFromFilePath(file); !scr.empty())
 				s.core->LoadScript(s.duelPtr, file, scr);
 		};
 		LoadScript("constant.lua");
@@ -342,7 +342,7 @@ std::optional<Context::DuelFinishReason> Context::Process(State::Dueling& s)
 			if(s.retryCount[s.replier->Position().first]++ < 1)
 			{
 				s.replier->Send(retryErrorMsg);
-				if(s.lastHint.size() > 0U)
+				if(!s.lastHint.empty())
 					s.replier->Send(MakeGameMsg(s.lastHint));
 				s.replier->Send(MakeGameMsg(s.lastRequest));
 				s.replay->PopBackResponse();
@@ -427,10 +427,8 @@ std::optional<Context::DuelFinishReason> Context::Process(State::Dueling& s)
 				const auto fullBuffer = s.core->QueryLocation(s.duelPtr, qInfo);
 				s.replay->RecordMsg(MakeUpdateDataMsg(req.con, req.loc, fullBuffer));
 				if(req.loc == LOCATION_DECK)
-				{
 					continue;
-				}
-				else if(req.loc == LOCATION_EXTRA)
+				if(req.loc == LOCATION_EXTRA)
 				{
 					SendToTeam(team, MakeMsg(fullBuffer));
 					continue;
@@ -510,12 +508,12 @@ std::optional<Context::DuelFinishReason> Context::Process(State::Dueling& s)
 			uint8_t winner = 1U - s.replier->Position().first;
 			return DuelFinishReason{Reason::REASON_WRONG_RESPONSE, winner};
 		}
-		else if(msgType == MSG_WIN)
+		if(msgType == MSG_WIN)
 		{
 			uint8_t winner = (msg[1U] > 1U) ? 2U : GetSwappedTeam(msg[1U]);
 			return DuelFinishReason{Reason::REASON_DUEL_WON, winner};
 		}
-		else if(DoesMessageRequireAnswer(msgType))
+		if(DoesMessageRequireAnswer(msgType))
 		{
 			SendToAllExcept(*s.replier, MakeGameMsg({MSG_WAITING}));
 			if(hostInfo.timeLimitInSeconds != 0U)
@@ -596,7 +594,7 @@ StateVariant Context::Finish(State::Dueling& s, const DuelFinishReason& dfr)
 	auto SendReplay = [&]()
 	{
 		s.replay->Serialize();
-		replayManager.Save(s.replayId, *s.replay);
+		svc.replayManager.Save(s.replayId, *s.replay);
 		if(s.replay->Bytes().size() > YGOPro::STOCMsg::MAX_PAYLOAD_SIZE)
 			SendToAll(MakeChat(CHAT_MSG_TYPE_ERROR, REPLAY_TOO_BIG_CHAT_MSG));
 		else

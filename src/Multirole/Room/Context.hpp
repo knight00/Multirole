@@ -7,7 +7,7 @@
 
 #include "State.hpp"
 #include "Event.hpp"
-#include "../CoreProvider.hpp"
+#include "../Service.hpp"
 #include "../STOCMsgFactory.hpp"
 
 namespace YGOPro
@@ -15,16 +15,12 @@ namespace YGOPro
 
 class Banlist;
 using BanlistPtr = std::shared_ptr<Banlist>;
+class CardDatabase;
 
 } // namespace YGOPro
 
 namespace Ignis::Multirole
 {
-
-class CardDatabase;
-class CoreProvider;
-class ReplayManager;
-class ScriptProvider;
 
 namespace Room
 {
@@ -37,14 +33,13 @@ public:
 	// Data passed on the ctor.
 	struct CreateInfo
 	{
+		Service& svc;
 		TimerAggregator& tagg;
-		CoreProvider& coreProvider;
-		ReplayManager& replayManager;
-		ScriptProvider& scriptProvider;
-		std::shared_ptr<CardDatabase> cdb;
+		uint32_t id;
+		uint32_t seed;
+		YGOPro::BanlistPtr banlist;
 		YGOPro::HostInfo hostInfo;
 		YGOPro::DeckLimits limits;
-		YGOPro::BanlistPtr banlist;
 	};
 
 	struct DuelFinishReason
@@ -65,9 +60,6 @@ public:
 
 	const YGOPro::HostInfo& HostInfo() const;
 	std::map<uint8_t, std::string> GetDuelistsNames() const;
-
-	void SetId(uint32_t id);
-	void SetRngSeed(uint32_t seed);
 
 	/*** STATE AND EVENT HANDLERS ***/
 	// State/ChoosingTurn.cpp
@@ -134,17 +126,16 @@ public:
 	}
 private:
 	// Creation options and resources.
+	Service& svc;
 	TimerAggregator& tagg;
-	CoreProvider& coreProvider;
-	ReplayManager& replayManager;
-	ScriptProvider& scriptProvider;
-	std::shared_ptr<CardDatabase> cdb;
+	const uint32_t id;
+	const YGOPro::BanlistPtr banlist;
 	const YGOPro::HostInfo hostInfo;
+	const YGOPro::DeckLimits limits;
+	const std::shared_ptr<YGOPro::CardDatabase> cdb;
 	const int32_t neededWins;
 	const YGOPro::STOCMsg joinMsg;
 	const YGOPro::STOCMsg retryErrorMsg;
-	const YGOPro::DeckLimits limits;
-	YGOPro::BanlistPtr banlist;
 
 	// Client management variables.
 	std::map<Client::PosType, Client*> duelists;
@@ -153,12 +144,11 @@ private:
 
 	// Additional data used by room states.
 	uint8_t isTeam1GoingFirst{};
-	uint32_t id{};
 	std::mt19937 rng{};
 	std::array<int32_t, 2U> wins{};
 
 	// Get correctly swapped teams based on team1 going first or not.
-	uint8_t GetSwappedTeam(uint8_t team);
+	uint8_t GetSwappedTeam(uint8_t team) const;
 
 	// Get the number of duelists on each team.
 	std::array<uint8_t, 2U> GetTeamCounts() const;
@@ -195,7 +185,7 @@ private:
 	Client& GetCurrentTeamClient(State::Dueling& s, uint8_t team);
 	std::optional<DuelFinishReason> Process(State::Dueling& s);
 	StateVariant Finish(State::Dueling& s, const DuelFinishReason& dfr);
-	const YGOPro::STOCMsg& SaveToSpectatorCache(
+	static const YGOPro::STOCMsg& SaveToSpectatorCache(
 		State::Dueling& s,
 		YGOPro::STOCMsg&& msg);
 	// State/RockPaperScissor.cpp

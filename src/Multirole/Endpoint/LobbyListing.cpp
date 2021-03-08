@@ -1,6 +1,6 @@
 #include "LobbyListing.hpp"
 
-#include <asio/write.hpp>
+#include <boost/asio/write.hpp>
 #include <fmt/format.h> // fmt::to_string
 #include <nlohmann/json.hpp>
 
@@ -13,11 +13,11 @@ namespace Ignis::Multirole::Endpoint
 // public
 
 LobbyListing::LobbyListing(
-	asio::io_context& ioCtx,
+	boost::asio::io_context& ioCtx,
 	unsigned short port,
 	Lobby& lobby)
 	:
-	acceptor(ioCtx, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), port)),
+	acceptor(ioCtx, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v6(), port)),
 	serializeTimer(ioCtx),
 	lobby(lobby),
 	serialized(std::make_shared<std::string>())
@@ -42,7 +42,7 @@ void LobbyListing::Stop()
 void LobbyListing::DoSerialize()
 {
 	serializeTimer.expires_after(std::chrono::seconds(2));
-	serializeTimer.async_wait([this](std::error_code ec)
+	serializeTimer.async_wait([this](boost::system::error_code ec)
 	{
 		if(ec)
 			return;
@@ -56,14 +56,14 @@ void LobbyListing::DoSerialize()
 		};
 		nlohmann::json j{{"rooms", nlohmann::json::array()}};
 		nlohmann::json& ar = j["rooms"];
-		for(auto& rp : lobby.GetAllRoomsProperties())
+		lobby.CollectRooms([&](const Lobby::RoomProps& rp)
 		{
 			ar.emplace_back();
 			auto& room = ar.back();
-			const auto& hi = rp.hostInfo;
+			const auto& hi = *rp.hostInfo;
 			room["roomid"] = rp.id;
 			room["roomname"] = ""; // NOTE: UNUSED but expected atm
-			room["roomnotes"] = rp.notes;
+			room["roomnotes"] = *rp.notes;
 			room["roommode"] = 0; // NOTE: UNUSED but expected atm
 			room["needpass"] = rp.passworded;
 			room["team1"] = hi.t0Count;
@@ -82,14 +82,14 @@ void LobbyListing::DoSerialize()
 			room["banlist_hash"] = hi.banlistHash;
 			room["istart"] = rp.started ? "start" : "waiting";
 			auto& ac = room["users"];
-			for(auto& kv : rp.duelists)
+			for(const auto& kv : rp.duelists)
 			{
 				ac.emplace_back();
 				auto& client = ac.back();
 				client["name"] = kv.second;
 				client["pos"] = kv.first;
 			}
-		}
+		});
 		constexpr auto eHandler = nlohmann::json::error_handler_t::replace;
 		const std::string strJ = j.dump(-1, 0, false, eHandler); // DUMP EET
 		{
@@ -105,7 +105,7 @@ void LobbyListing::DoSerialize()
 void LobbyListing::DoAccept()
 {
 	acceptor.async_accept(
-	[this](const std::error_code& ec, asio::ip::tcp::socket socket)
+	[this](const boost::system::error_code& ec, boost::asio::ip::tcp::socket socket)
 	{
 		if(!acceptor.is_open())
 			return;
@@ -120,7 +120,7 @@ void LobbyListing::DoAccept()
 }
 
 LobbyListing::Connection::Connection(
-	asio::ip::tcp::socket socket,
+	boost::asio::ip::tcp::socket socket,
 	std::shared_ptr<std::string> data)
 	:
 	socket(std::move(socket)),
@@ -132,8 +132,8 @@ LobbyListing::Connection::Connection(
 void LobbyListing::Connection::DoRead()
 {
 	auto self(shared_from_this());
-	socket.async_read_some(asio::buffer(incoming),
-	[this, self](std::error_code ec, std::size_t /*unused*/)
+	socket.async_read_some(boost::asio::buffer(incoming),
+	[this, self](boost::system::error_code ec, std::size_t /*unused*/)
 	{
 		if(ec)
 			return;
@@ -149,11 +149,11 @@ void LobbyListing::Connection::DoRead()
 void LobbyListing::Connection::DoWrite()
 {
 	auto self(shared_from_this());
-	asio::async_write(socket, asio::buffer(*outgoing),
-	[this, self](std::error_code ec, std::size_t /*unused*/)
+	boost::asio::async_write(socket, boost::asio::buffer(*outgoing),
+	[this, self](boost::system::error_code ec, std::size_t /*unused*/)
 	{
 		if(!ec)
-			socket.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+			socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
 	});
 }
 

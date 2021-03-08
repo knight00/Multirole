@@ -1,10 +1,9 @@
 #include "Context.hpp"
 
-#include <fmt/format.h>
-
-#include "../CardDatabase.hpp"
 #include "../STOCMsgFactory.hpp"
+#include "../Service/DataProvider.hpp"
 #include "../YGOPro/Banlist.hpp"
+#include "../YGOPro/CardDatabase.hpp"
 #include "../YGOPro/Constants.hpp"
 #include "../YGOPro/Deck.hpp"
 
@@ -17,18 +16,19 @@ constexpr const char* MSG_RETRY_ERROR_CHAT =
 Context::Context(CreateInfo&& info)
 	:
 	STOCMsgFactory(info.hostInfo.t0Count),
+	svc(info.svc),
 	tagg(info.tagg),
-	coreProvider(info.coreProvider),
-	replayManager(info.replayManager),
-	scriptProvider(info.scriptProvider),
-	cdb(std::move(info.cdb)),
-	hostInfo(std::move(info.hostInfo)),
+	id(info.id),
+	banlist(std::move(info.banlist)),
+	hostInfo(info.hostInfo),
+	limits(info.limits),
+	cdb(svc.dataProvider.GetDatabase()),
 	neededWins(static_cast<int32_t>(std::ceil(hostInfo.bestOf / 2.0F))),
 	joinMsg(YGOPro::STOCMsg::JoinGame{hostInfo}),
-	retryErrorMsg(MakeChat(CHAT_MSG_TYPE_ERROR, MSG_RETRY_ERROR_CHAT)),
-	limits(std::move(info.limits)),
-	banlist(std::move(info.banlist))
-{}
+	retryErrorMsg(MakeChat(CHAT_MSG_TYPE_ERROR, MSG_RETRY_ERROR_CHAT))
+{
+	rng.seed(info.seed);
+}
 
 const YGOPro::HostInfo& Context::HostInfo() const
 {
@@ -40,25 +40,15 @@ std::map<uint8_t, std::string> Context::GetDuelistsNames() const
 	std::map<uint8_t, std::string> ret;
 	{
 		std::shared_lock lock(mDuelists);
-		for(auto& kv : duelists)
+		for(const auto& kv : duelists)
 			ret.emplace(EncodePosition(kv.first), kv.second->Name());
 	}
 	return ret;
 }
 
-void Context::SetId(uint32_t newId)
-{
-	id = newId;
-}
-
-void Context::SetRngSeed(uint32_t seed)
-{
-	rng.seed(seed);
-}
-
 // private
 
-uint8_t Context::GetSwappedTeam(uint8_t team)
+uint8_t Context::GetSwappedTeam(uint8_t team) const
 {
 	assert(team <= 1U);
 	return isTeam1GoingFirst ^ team;

@@ -2,9 +2,8 @@ project('multirole', ['c', 'cpp'], default_options : 'cpp_std=c++17')
 
 is_window = host_machine.system() == 'windows'
 
-asio_dep    = dependency('asio', required : is_window)
 atomic_dep  = meson.get_compiler('cpp').find_library('atomic', required : false)
-boost_dep   = dependency('boost')
+boost_dep   = dependency('boost', modules : ['filesystem'])
 dl_dep      = meson.get_compiler('cpp').find_library('dl', required : false)
 fmt_dep     = dependency('fmt')
 libgit2_dep = dependency('libgit2')
@@ -16,17 +15,10 @@ thread_dep  = dependency('threads')
 
 multirole_src_files = files([
 	'src/DLOpen.cpp',
-	'src/FileSystem.cpp',
-	'src/Multirole/BanlistProvider.cpp',
-	'src/Multirole/CardDatabase.cpp',
-	'src/Multirole/CoreProvider.cpp',
-	'src/Multirole/DataProvider.cpp',
 	'src/Multirole/GitRepo.cpp',
 	'src/Multirole/Instance.cpp',
 	'src/Multirole/Lobby.cpp',
 	'src/Multirole/main.cpp',
-	'src/Multirole/ReplayManager.cpp',
-	'src/Multirole/ScriptProvider.cpp',
 	'src/Multirole/STOCMsgFactory.cpp',
 	'src/Multirole/Core/DLWrapper.cpp',
 	'src/Multirole/Core/HornetWrapper.cpp',
@@ -44,7 +36,13 @@ multirole_src_files = files([
 	'src/Multirole/Room/State/RockPaperScissor.cpp',
 	'src/Multirole/Room/State/Sidedecking.cpp',
 	'src/Multirole/Room/State/Waiting.cpp',
+	'src/Multirole/Service/BanlistProvider.cpp',
+	'src/Multirole/Service/CoreProvider.cpp',
+	'src/Multirole/Service/DataProvider.cpp',
+	'src/Multirole/Service/ReplayManager.cpp',
+	'src/Multirole/Service/ScriptProvider.cpp',
 	'src/Multirole/YGOPro/Banlist.cpp',
+	'src/Multirole/YGOPro/CardDatabase.cpp',
 	'src/Multirole/YGOPro/CoreUtils.cpp',
 	'src/Multirole/YGOPro/Deck.cpp',
 	'src/Multirole/YGOPro/Replay.cpp',
@@ -67,12 +65,10 @@ executable('multirole', multirole_src_files,
 		'-DNOMINMAX'
 	],
 	cpp_args: [
-		'-DASIO_STANDALONE',
 		'-DSPDLOG_FMT_EXTERNAL',
 		'-DBOOST_DATE_TIME_NO_LIB'
 	],
 	dependencies: [
-		asio_dep,
 		atomic_dep,
 		boost_dep,
 		dl_dep,

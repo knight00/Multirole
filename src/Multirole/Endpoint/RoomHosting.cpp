@@ -1,15 +1,14 @@
 #include "RoomHosting.hpp"
 
-#include <asio/read.hpp>
-#include <asio/write.hpp>
+#include <boost/asio/read.hpp>
+#include <boost/asio/write.hpp>
 
-#include "../BanlistProvider.hpp"
-#include "../DataProvider.hpp"
 #include "../Lobby.hpp"
 #include "../STOCMsgFactory.hpp"
 #include "../Workaround.hpp"
 #include "../Room/Client.hpp"
 #include "../Room/Instance.hpp"
+#include "../Service/BanlistProvider.hpp"
 #include "../YGOPro/Config.hpp"
 #include "../YGOPro/StringUtils.hpp"
 
@@ -75,7 +74,7 @@ inline std::string Utf16BufferToStr(const Buffer& buffer)
 
 // public
 
-RoomHosting::RoomHosting(CreateInfo&& info)
+RoomHosting::RoomHosting(boost::asio::io_context& ioCtx, Service& svc, Lobby& lobby, unsigned short port)
 	:
 	prebuiltMsgs({
 		STOCMsgFactory::MakeVersionError(YGOPro::SERVER_VERSION),
@@ -86,14 +85,10 @@ RoomHosting::RoomHosting(CreateInfo&& info)
 		STOCMsgFactory::MakeJoinError(Error::JOIN_NOT_FOUND),
 		STOCMsgFactory::MakeChat(CHAT_MSG_TYPE_ERROR, KICKED_BEFORE),
 	}),
-	ioCtx(info.ioCtx),
-	acceptor(info.ioCtx, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), info.port)),
-	banlistProvider(info.banlistProvider),
-	coreProvider(info.coreProvider),
-	dataProvider(info.dataProvider),
-	replayManager(info.replayManager),
-	scriptProvider(info.scriptProvider),
-	lobby(info.lobby)
+	ioCtx(ioCtx),
+	svc(svc),
+	lobby(lobby),
+	acceptor(ioCtx, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v6(), port))
 {
 	Workaround::SetCloseOnExec(acceptor.native_handle());
 	DoAccept();
@@ -111,27 +106,24 @@ const YGOPro::STOCMsg& RoomHosting::GetPrebuiltMsg(PrebuiltMsgId id) const
 	return prebuiltMsgs[static_cast<std::size_t>(id)];
 }
 
-std::shared_ptr<Room::Instance> RoomHosting::GetRoomById(uint32_t id) const
+Lobby& RoomHosting::GetLobby() const
 {
-	return lobby.GetRoomById(id);
+	return lobby;
 }
 
 Room::Instance::CreateInfo RoomHosting::GetBaseRoomCreateInfo(uint32_t banlistHash) const
 {
 	return Room::Instance::CreateInfo
 	{
-		lobby,
 		ioCtx,
-		coreProvider,
-		replayManager,
-		scriptProvider,
-		dataProvider.GetDatabase(),
-		{}, // hostInfo
-		{}, // limits
-		banlistProvider.GetBanlistByHash(banlistHash),
-		{}, // name
 		{}, // notes
-		{}  // password
+		{}, // password
+		svc,
+		0U, // id
+		0U, // seed
+		svc.banlistProvider.GetBanlistByHash(banlistHash),
+		{}, // hostInfo
+		{} // limits
 	};
 }
 
@@ -140,7 +132,7 @@ Room::Instance::CreateInfo RoomHosting::GetBaseRoomCreateInfo(uint32_t banlistHa
 void RoomHosting::DoAccept()
 {
 	acceptor.async_accept(
-	[this](const std::error_code& ec, asio::ip::tcp::socket socket)
+	[this](const boost::system::error_code& ec, boost::asio::ip::tcp::socket socket)
 	{
 		if(!acceptor.is_open())
 			return;
@@ -155,22 +147,19 @@ void RoomHosting::DoAccept()
 
 RoomHosting::Connection::Connection(
 	const RoomHosting& roomHosting,
-	asio::ip::tcp::socket socket)
+	boost::asio::ip::tcp::socket socket)
 	:
 	roomHosting(roomHosting),
-	socket(std::move(socket)),
-	name(),
-	incoming(),
-	outgoing()
+	socket(std::move(socket))
 {}
 
 
 void RoomHosting::Connection::DoReadHeader()
 {
 	auto self(shared_from_this());
-	auto buffer = asio::buffer(incoming.Data(), YGOPro::CTOSMsg::HEADER_LENGTH);
-	asio::async_read(socket, buffer,
-	[this, self](std::error_code ec, std::size_t /*unused*/)
+	auto buffer = boost::asio::buffer(incoming.Data(), YGOPro::CTOSMsg::HEADER_LENGTH);
+	boost::asio::async_read(socket, buffer,
+	[this, self](boost::system::error_code ec, std::size_t /*unused*/)
 	{
 		if(!ec && incoming.IsHeaderValid())
 			DoReadBody();
@@ -180,9 +169,9 @@ void RoomHosting::Connection::DoReadHeader()
 void RoomHosting::Connection::DoReadBody()
 {
 	auto self(shared_from_this());
-	auto buffer = asio::buffer(incoming.Body(), incoming.GetLength());
-	asio::async_read(socket, buffer,
-	[this, self](std::error_code ec, std::size_t /*unused*/)
+	auto buffer = boost::asio::buffer(incoming.Body(), incoming.GetLength());
+	boost::asio::async_read(socket, buffer,
+	[this, self](boost::system::error_code ec, std::size_t /*unused*/)
 	{
 		if(ec)
 			return;
@@ -201,9 +190,9 @@ void RoomHosting::Connection::DoReadBody()
 void RoomHosting::Connection::DoReadEnd()
 {
 	auto self(shared_from_this());
-	auto buffer = asio::buffer(incoming.Data(), YGOPro::CTOSMsg::MSG_MAX_LENGTH);
+	auto buffer = boost::asio::buffer(incoming.Data(), YGOPro::CTOSMsg::MSG_MAX_LENGTH);
 	socket.async_read_some(buffer,
-	[this, self](std::error_code ec, std::size_t /*unused*/)
+	[this, self](boost::system::error_code ec, std::size_t /*unused*/)
 	{
 		if(!ec)
 			DoReadEnd();
@@ -215,8 +204,8 @@ void RoomHosting::Connection::DoWrite()
 	assert(!outgoing.empty());
 	auto self(shared_from_this());
 	const auto& front = outgoing.front();
-	asio::async_write(socket, asio::buffer(front.Data(), front.Length()),
-	[this, self](std::error_code ec, std::size_t /*unused*/)
+	boost::asio::async_write(socket, boost::asio::buffer(front.Data(), front.Length()),
+	[this, self](boost::system::error_code ec, std::size_t /*unused*/)
 	{
 		if(ec)
 			return;
@@ -224,7 +213,7 @@ void RoomHosting::Connection::DoWrite()
 		if(!outgoing.empty())
 			DoWrite();
 		else
-			socket.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+			socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
 	});
 }
 
@@ -262,7 +251,6 @@ RoomHosting::Connection::Status RoomHosting::Connection::HandleMsg()
 		// Set our custom info.
 		info.hostInfo = p->hostInfo;
 		info.limits = LimitsFromFlags(info.hostInfo.extraRules);
-		info.name = Utf16BufferToStr(p->name);
 		info.notes = std::string(p->notes);
 		info.pass = Utf16BufferToStr(p->pass);
 		// Fix some of the options back into expected values in case of
@@ -276,12 +264,12 @@ RoomHosting::Connection::Status RoomHosting::Connection::HandleMsg()
 		// Add flag that client should be setting.
 		// NOLINTNEXTLINE: DUEL_PSEUDO_SHUFFLE
 		hi.duelFlagsLow |= (!hi.dontShuffleDeck) ? 0x0 : 0x10;
-		// Make new room with the set parameters
-		auto room = std::make_shared<Room::Instance>(std::move(info));
-		room->RegisterToOwner();
-		// Add the client to the newly created room
+		// Make new room with the set parameters, missing parameters will be
+		// filled by the lobby.
+		auto room = roomHosting.GetLobby().MakeRoom(info);
+		// Add the client to the newly created room.
 		auto client = std::make_shared<Room::Client>(
-			room,
+			std::move(room),
 			std::move(socket),
 			std::move(name));
 		client->RegisterToOwner();
@@ -296,33 +284,31 @@ RoomHosting::Connection::Status RoomHosting::Connection::HandleMsg()
 			PushToWriteQueue(PrebuiltMsgId::PREBUILT_MSG_VERSION_MISMATCH);
 			return Status::STATUS_ERROR;
 		}
-		if(auto room = roomHosting.GetRoomById(p->id); !room)
+		auto room = roomHosting.GetLobby().GetRoomById(p->id);
+		if(!room)
 		{
 			PushToWriteQueue(PrebuiltMsgId::PREBUILT_ROOM_NOT_FOUND);
 			PushToWriteQueue(PrebuiltMsgId::PREBUILT_GENERIC_JOIN_ERROR);
 			return Status::STATUS_ERROR;
 		}
-		else if(!room->CheckPassword(Utf16BufferToStr(p->pass)))
+		if(!room->CheckPassword(Utf16BufferToStr(p->pass)))
 		{
 			PushToWriteQueue(PrebuiltMsgId::PREBUILT_ROOM_WRONG_PASS);
 			return Status::STATUS_ERROR;
 		}
-		else if(room->CheckKicked(socket.remote_endpoint().address()))
+		if(room->CheckKicked(socket.remote_endpoint().address()))
 		{
 			PushToWriteQueue(PrebuiltMsgId::PREBUILT_KICKED_BEFORE);
 			PushToWriteQueue(PrebuiltMsgId::PREBUILT_GENERIC_JOIN_ERROR);
 			return Status::STATUS_ERROR;
 		}
-		else
-		{
-			auto client = std::make_shared<Room::Client>(
-				room,
-				std::move(socket),
-				std::move(name));
-			client->RegisterToOwner();
-			client->Start();
-			return Status::STATUS_MOVED;
-		}
+		auto client = std::make_shared<Room::Client>(
+			std::move(room),
+			std::move(socket),
+			std::move(name));
+		client->RegisterToOwner();
+		client->Start();
+		return Status::STATUS_MOVED;
 	}
 	default:
 	{

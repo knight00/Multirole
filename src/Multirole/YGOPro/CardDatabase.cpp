@@ -6,9 +6,9 @@
 
 #include <sqlite3.h>
 
-#include "YGOPro/Constants.hpp"
+#include "Constants.hpp"
 
-namespace Ignis::Multirole
+namespace YGOPro
 {
 
 static constexpr const char* DB_SCHEMAS =
@@ -211,4 +211,4 @@ const CardExtraData& CardDatabase::ExtraFromCode(uint32_t code)
 	return ced;
 }
 
-} // namespace Ignis::Multirole
+} // namespace YGOPro
