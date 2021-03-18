@@ -1,7 +1,10 @@
 #include "GitRepo.hpp"
 
+#include <boost/filesystem.hpp>
+#include <boost/json/value.hpp>
 #include <spdlog/spdlog.h>
 
+#include "I18N.hpp"
 #include "libgit2.hpp"
 
 namespace Ignis::Multirole
@@ -25,29 +28,30 @@ std::string NormalizeDirPath(std::string_view str)
 
 // public
 
-GitRepo::GitRepo(boost::asio::io_context& ioCtx, const nlohmann::json& opts) :
-	Webhook(ioCtx, opts.at("webhookPort").get<unsigned short>()),
-	token(opts.at("webhookToken").get<std::string>()),
-	remote(opts.at("remote").get<std::string>()),
-	path(NormalizeDirPath(opts.at("path").get<std::string>())),
+GitRepo::GitRepo(boost::asio::io_context& ioCtx, const boost::json::value& opts) :
+	Webhook(ioCtx, opts.at("webhookPort").to_number<unsigned short>()),
+	token(opts.at("webhookToken").as_string().data()),
+	remote(opts.at("remote").as_string().data()),
+	path(NormalizeDirPath(opts.at("path").as_string().data())),
 	repo(nullptr)
 {
-	if(opts.count("credentials") != 0U)
+	if(const auto* const cred = opts.as_object().if_contains("credentials"); cred)
 	{
-		const auto& credJson = opts["credentials"];
-		auto user = credJson.at("username").get<std::string>();
-		auto pass = credJson.at("password").get<std::string>();
-		credPtr = std::make_unique<Credentials>(std::move(user), std::move(pass));
+		credPtr = std::make_unique<Credentials>(
+			cred->at("username").as_string().data(),
+			cred->at("password").as_string().data());
 	}
+	if(!boost::filesystem::is_directory(path))
+		throw std::runtime_error(I18N::GIT_REPO_PATH_IS_NOT_DIR);
 	if(!CheckIfRepoExists())
 	{
-		spdlog::info("Repository doesnt exist, Cloning...");
+		spdlog::info(I18N::GIT_REPO_DOES_NOT_EXIST);
 		Clone();
 		return;
 	}
-	spdlog::info("Repository exist! Opening...");
-	Git::Check(git_repository_open(&repo, path.c_str()));
-	spdlog::info("Checking for updates...");
+	spdlog::info(I18N::GIT_REPO_EXISTS);
+	Git::Check(git_repository_open(&repo, path.data()));
+	spdlog::info(I18N::GIT_REPO_CHECKING_UPDATES);
 	try
 	{
 		Fetch();
@@ -58,7 +62,7 @@ GitRepo::GitRepo(boost::asio::io_context& ioCtx, const nlohmann::json& opts) :
 		git_repository_free(repo);
 		throw;
 	}
-	spdlog::info("Updating completed!");
+	spdlog::info(I18N::GIT_REPO_UPDATE_COMPLETED);
 }
 
 GitRepo::~GitRepo()
@@ -77,10 +81,10 @@ void GitRepo::AddObserver(IGitRepoObserver& obs)
 
 void GitRepo::Callback(std::string_view payload)
 {
-	spdlog::info("Webhook triggered for repository on '{:s}'", path);
+	spdlog::info(I18N::GIT_REPO_WEBHOOK_TRIGGERED, path);
 	if(payload.find(token) == std::string_view::npos)
 	{
-		spdlog::error("Trigger doesn't have the token");
+		spdlog::error(I18N::GIT_REPO_WEBHOOK_NO_TOKEN);
 		return;
 	}
 	try
@@ -88,14 +92,14 @@ void GitRepo::Callback(std::string_view payload)
 		Fetch();
 		const GitDiff diff = GetFilesDiff();
 		ResetToFetchHead();
-		spdlog::info("Finished updating");
+		spdlog::info(I18N::GIT_REPO_FINISHED_UPDATING);
 		if(!diff.removed.empty() || !diff.added.empty())
 			for(auto& obs : observers)
 				obs->OnDiff(path, diff);
 	}
 	catch(const std::exception& e)
 	{
-		spdlog::error("Exception ocurred while updating repo: {:s}", e.what());
+		spdlog::error(I18N::GIT_REPO_UPDATE_EXCEPT, e.what());
 	}
 }
 
@@ -118,7 +122,7 @@ void GitRepo::Clone()
 		cloneOpts.fetch_opts.callbacks.payload = credPtr.get();
 	}
 	Git::Check(git_clone(&repo, remote.c_str(), path.c_str(), &cloneOpts));
-	spdlog::info("Cloning completed!");
+	spdlog::info(I18N::GIT_REPO_CLONING_COMPLETED);
 }
 
 void GitRepo::Fetch()
