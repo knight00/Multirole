@@ -2,10 +2,13 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/json/value.hpp>
-#include <spdlog/spdlog.h>
 
 #include "I18N.hpp"
+#include "IGitRepoObserver.hpp"
 #include "libgit2.hpp"
+#include "Service/LogHandler.hpp"
+#define LOG_INFO(...) lh.Log(ServiceType::GIT_REPO, Level::INFO, __VA_ARGS__)
+#define LOG_ERROR(...) lh.Log(ServiceType::GIT_REPO, Level::ERROR, __VA_ARGS__)
 
 namespace Ignis::Multirole
 {
@@ -18,21 +21,14 @@ int CredCb(git_cred** out, const char* /*unused*/, const char* /*unused*/, unsig
 	return git_cred_userpass_plaintext_new(out, cred.first.c_str(), cred.second.c_str());
 }
 
-std::string NormalizeDirPath(std::string_view str)
-{
-	std::string tmp(str);
-	if(tmp.back() != '/' || tmp.back() != '\\')
-		tmp.push_back('/');
-	return tmp;
-}
-
 // public
 
-GitRepo::GitRepo(boost::asio::io_context& ioCtx, const boost::json::value& opts) :
+GitRepo::GitRepo(Service::LogHandler& lh, boost::asio::io_context& ioCtx, const boost::json::value& opts) :
 	Webhook(ioCtx, opts.at("webhookPort").to_number<unsigned short>()),
+	lh(lh),
 	token(opts.at("webhookToken").as_string().data()),
 	remote(opts.at("remote").as_string().data()),
-	path(NormalizeDirPath(opts.at("path").as_string().data())),
+	path(opts.at("path").as_string().data()),
 	repo(nullptr)
 {
 	if(const auto* const cred = opts.as_object().if_contains("credentials"); cred)
@@ -41,17 +37,17 @@ GitRepo::GitRepo(boost::asio::io_context& ioCtx, const boost::json::value& opts)
 			cred->at("username").as_string().data(),
 			cred->at("password").as_string().data());
 	}
-	if(!boost::filesystem::is_directory(path))
+	if(boost::filesystem::exists(path) && !boost::filesystem::is_directory(path))
 		throw std::runtime_error(I18N::GIT_REPO_PATH_IS_NOT_DIR);
 	if(!CheckIfRepoExists())
 	{
-		spdlog::info(I18N::GIT_REPO_DOES_NOT_EXIST);
+		LOG_INFO(I18N::GIT_REPO_DOES_NOT_EXIST);
 		Clone();
 		return;
 	}
-	spdlog::info(I18N::GIT_REPO_EXISTS);
-	Git::Check(git_repository_open(&repo, path.data()));
-	spdlog::info(I18N::GIT_REPO_CHECKING_UPDATES);
+	LOG_INFO(I18N::GIT_REPO_EXISTS);
+	Git::Check(git_repository_open(&repo, path.string().data()));
+	LOG_INFO(I18N::GIT_REPO_CHECKING_UPDATES);
 	try
 	{
 		Fetch();
@@ -62,7 +58,7 @@ GitRepo::GitRepo(boost::asio::io_context& ioCtx, const boost::json::value& opts)
 		git_repository_free(repo);
 		throw;
 	}
-	spdlog::info(I18N::GIT_REPO_UPDATE_COMPLETED);
+	LOG_INFO(I18N::GIT_REPO_UPDATE_COMPLETED);
 }
 
 GitRepo::~GitRepo()
@@ -81,10 +77,10 @@ void GitRepo::AddObserver(IGitRepoObserver& obs)
 
 void GitRepo::Callback(std::string_view payload)
 {
-	spdlog::info(I18N::GIT_REPO_WEBHOOK_TRIGGERED, path);
+	LOG_INFO(I18N::GIT_REPO_WEBHOOK_TRIGGERED, path.string());
 	if(payload.find(token) == std::string_view::npos)
 	{
-		spdlog::error(I18N::GIT_REPO_WEBHOOK_NO_TOKEN);
+		LOG_ERROR(I18N::GIT_REPO_WEBHOOK_NO_TOKEN);
 		return;
 	}
 	try
@@ -92,14 +88,14 @@ void GitRepo::Callback(std::string_view payload)
 		Fetch();
 		const GitDiff diff = GetFilesDiff();
 		ResetToFetchHead();
-		spdlog::info(I18N::GIT_REPO_FINISHED_UPDATING);
+		LOG_INFO(I18N::GIT_REPO_FINISHED_UPDATING);
 		if(!diff.removed.empty() || !diff.added.empty())
 			for(auto& obs : observers)
 				obs->OnDiff(path, diff);
 	}
 	catch(const std::exception& e)
 	{
-		spdlog::error(I18N::GIT_REPO_UPDATE_EXCEPT, e.what());
+		LOG_ERROR(I18N::GIT_REPO_UPDATE_EXCEPT, e.what());
 	}
 }
 
@@ -107,7 +103,7 @@ bool GitRepo::CheckIfRepoExists() const
 {
 	return git_repository_open_ext(
 		nullptr,
-		path.c_str(),
+		path.string().data(),
 		GIT_REPOSITORY_OPEN_NO_SEARCH,
 		nullptr) == 0;
 }
@@ -121,8 +117,8 @@ void GitRepo::Clone()
 		cloneOpts.fetch_opts.callbacks.credentials = &CredCb;
 		cloneOpts.fetch_opts.callbacks.payload = credPtr.get();
 	}
-	Git::Check(git_clone(&repo, remote.c_str(), path.c_str(), &cloneOpts));
-	spdlog::info(I18N::GIT_REPO_CLONING_COMPLETED);
+	Git::Check(git_clone(&repo, remote.c_str(), path.string().data(), &cloneOpts));
+	LOG_INFO(I18N::GIT_REPO_CLONING_COMPLETED);
 }
 
 void GitRepo::Fetch()

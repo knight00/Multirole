@@ -6,6 +6,7 @@
 #include <boost/json/fwd.hpp>
 
 #include "IGitRepoObserver.hpp"
+#include "Service.hpp"
 #include "Endpoint/Webhook.hpp"
 
 struct git_repository;
@@ -18,7 +19,7 @@ class GitRepo final : public Endpoint::Webhook
 public:
 	using Credentials = std::pair<std::string, std::string>;
 
-	GitRepo(boost::asio::io_context& ioCtx, const boost::json::value& opts);
+	GitRepo(Service::LogHandler& lh, boost::asio::io_context& ioCtx, const boost::json::value& opts);
 	~GitRepo();
 
 	// Remove copy and move operations.
@@ -29,9 +30,10 @@ public:
 
 	void AddObserver(IGitRepoObserver& obs);
 private:
+	Service::LogHandler& lh;
 	const std::string token;
 	const std::string remote;
-	const std::string path;
+	const boost::filesystem::path path;
 	std::unique_ptr<Credentials> credPtr;
 	git_repository* repo;
 	std::vector<IGitRepoObserver*> observers;
@@ -45,7 +47,7 @@ private:
 	void ResetToFetchHead();
 
 	GitDiff GetFilesDiff() const;
-	std::vector<std::string> GetTrackedFiles() const;
+	std::vector<boost::filesystem::path> GetTrackedFiles() const;
 };
 
 } // namespace Ignis::Multirole

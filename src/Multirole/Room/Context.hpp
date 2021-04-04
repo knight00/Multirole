@@ -5,8 +5,9 @@
 #include <shared_mutex>
 #include <random>
 
-#include "State.hpp"
 #include "Event.hpp"
+#include "ScriptLogger.hpp"
+#include "State.hpp"
 #include "../Service.hpp"
 #include "../STOCMsgFactory.hpp"
 
@@ -21,6 +22,8 @@ class CardDatabase;
 
 namespace Ignis::Multirole
 {
+
+class RoomLogger;
 
 namespace Room
 {
@@ -40,6 +43,8 @@ public:
 		YGOPro::BanlistPtr banlist;
 		YGOPro::HostInfo hostInfo;
 		YGOPro::DeckLimits limits;
+		bool isPrivate;
+		const std::string& notes;
 	};
 
 	struct DuelFinishReason
@@ -57,8 +62,10 @@ public:
 	};
 
 	Context(CreateInfo&& info);
+	~Context();
 
 	const YGOPro::HostInfo& HostInfo() const;
+	bool IsPrivate() const;
 	std::map<uint8_t, std::string> GetDuelistsNames() const;
 
 	/*** STATE AND EVENT HANDLERS ***/
@@ -136,6 +143,9 @@ private:
 	const int32_t neededWins;
 	const YGOPro::STOCMsg joinMsg;
 	const YGOPro::STOCMsg retryErrorMsg;
+	const bool isPrivate;
+	std::unique_ptr<RoomLogger> rl;
+	ScriptLogger scriptLogger;
 
 	// Client management variables.
 	std::map<Client::PosType, Client*> duelists;

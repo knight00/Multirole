@@ -13,11 +13,13 @@ namespace Ignis::Multirole::Room
 Client::Client(
 	std::shared_ptr<Instance> r,
 	boost::asio::ip::tcp::socket socket,
+	std::string ip,
 	std::string name)
 	:
 	room(std::move(r)),
 	strand(room->Strand()),
 	socket(std::move(socket)),
+	ip(std::move(ip)),
 	name(std::move(name)),
 	connectionLost(false),
 	disconnecting(false),
@@ -36,7 +38,12 @@ void Client::Start()
 	DoReadHeader();
 }
 
-std::string Client::Name() const
+const std::string& Client::Ip() const
+{
+	return ip;
+}
+
+const std::string& Client::Name() const
 {
 	return name;
 }
@@ -65,7 +72,7 @@ const YGOPro::Deck* Client::CurrentDeck() const
 
 void Client::MarkKicked() const
 {
-	room->AddKicked(socket.remote_endpoint().address());
+	room->AddKicked(ip);
 }
 
 void Client::SetPosition(const PosType& p)
@@ -191,8 +198,12 @@ void Client::HandleMsg()
 		std::vector<uint32_t> side;
 		try
 		{
-			auto mainCount = incoming.Read<uint32_t>(ptr);
-			auto sideCount = incoming.Read<uint32_t>(ptr);
+			constexpr auto MAX_CARD_COUNT = (YGOPro::CTOSMsg::MSG_MAX_LENGTH -
+				(sizeof(uint32_t) * 2U)) / sizeof(uint32_t);
+			const auto mainCount = incoming.Read<uint32_t>(ptr);
+			const auto sideCount = incoming.Read<uint32_t>(ptr);
+			if(mainCount + sideCount > MAX_CARD_COUNT)
+				throw std::out_of_range("deck size would exceed message size");
 			main.reserve(mainCount);
 			side.reserve(sideCount);
 			for(uint32_t i = 0U; i < mainCount; i++)
@@ -200,9 +211,9 @@ void Client::HandleMsg()
 			for(uint32_t i = 0U; i < sideCount; i++)
 				side.push_back(incoming.Read<uint32_t>(ptr));
 		}
-		catch(uintptr_t value)
+		catch(const std::exception& e)
 		{
-			//Send DECK_INVALID_SIZE to the client
+			return;
 		}
 		room->Dispatch(Event::UpdateDeck{*this, main, side});
 		break;

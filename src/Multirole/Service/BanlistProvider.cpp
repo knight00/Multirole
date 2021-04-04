@@ -2,8 +2,9 @@
 
 #include <fstream>
 
-#include <spdlog/spdlog.h>
-
+#include "LogHandler.hpp"
+#define LOG_INFO(...) lh.Log(ServiceType::BANLIST_PROVIDER, Level::INFO, __VA_ARGS__)
+#define LOG_ERROR(...) lh.Log(ServiceType::BANLIST_PROVIDER, Level::ERROR, __VA_ARGS__)
 #include "../I18N.hpp"
 #define YGOPRO_BANLIST_PARSER_IMPLEMENTATION
 #include "../YGOPro/BanlistParser.hpp"
@@ -11,7 +12,8 @@
 namespace Ignis::Multirole
 {
 
-Service::BanlistProvider::BanlistProvider(std::string_view fnRegexStr) :
+Service::BanlistProvider::BanlistProvider(Service::LogHandler& lh, std::string_view fnRegexStr) :
+	lh(lh),
 	fnRegex(fnRegexStr.data())
 {}
 
@@ -23,29 +25,27 @@ YGOPro::BanlistPtr Service::BanlistProvider::GetBanlistByHash(YGOPro::BanlistHas
 	return nullptr;
 }
 
-void Service::BanlistProvider::OnAdd(std::string_view path, const PathVector& fileList)
+void Service::BanlistProvider::OnAdd(const boost::filesystem::path& path, const PathVector& fileList)
 {
 	LoadBanlists(path, fileList);
 }
 
-void Service::BanlistProvider::OnDiff(std::string_view path, const GitDiff& diff)
+void Service::BanlistProvider::OnDiff(const boost::filesystem::path& path, const GitDiff& diff)
 {
 	LoadBanlists(path, diff.added);
 }
 
 // private
 
-void Service::BanlistProvider::LoadBanlists(std::string_view path, const PathVector& fileList)
+void Service::BanlistProvider::LoadBanlists(const boost::filesystem::path& path, const PathVector& fileList)
 {
-	std::string fullPath(path);
 	YGOPro::BanlistMap tmp;
 	for(const auto& fn : fileList)
 	{
-		if(!std::regex_match(fn, fnRegex))
+		if(!std::regex_match(fn.string(), fnRegex))
 			continue;
-		fullPath.resize(path.size());
-		fullPath += fn;
-		spdlog::info(I18N::BANLIST_PROVIDER_LOADING_ONE, fullPath);
+		auto fullPath = (path / fn).lexically_normal();
+		LOG_INFO(I18N::BANLIST_PROVIDER_LOADING_ONE, fullPath.string());
 		try
 		{
 			std::ifstream f(fullPath);
@@ -53,7 +53,7 @@ void Service::BanlistProvider::LoadBanlists(std::string_view path, const PathVec
 		}
 		catch(const std::exception& e)
 		{
-			spdlog::error(I18N::BANLIST_PROVIDER_COULD_NOT_LOAD_ONE, e.what());
+			LOG_ERROR(I18N::BANLIST_PROVIDER_COULD_NOT_LOAD_ONE, e.what());
 		}
 	}
 	std::scoped_lock lock(mBanlists);

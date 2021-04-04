@@ -3,6 +3,7 @@
 #include "../I18N.hpp"
 #include "../STOCMsgFactory.hpp"
 #include "../Service/DataProvider.hpp"
+#include "../Service/LogHandler.hpp"
 #include "../YGOPro/Banlist.hpp"
 #include "../YGOPro/CardDatabase.hpp"
 #include "../YGOPro/Constants.hpp"
@@ -23,14 +24,26 @@ Context::Context(CreateInfo&& info)
 	cdb(svc.dataProvider.GetDatabase()),
 	neededWins(static_cast<int32_t>(std::ceil(hostInfo.bestOf / 2.0F))),
 	joinMsg(YGOPro::STOCMsg::JoinGame{hostInfo}),
-	retryErrorMsg(MakeChat(CHAT_MSG_TYPE_ERROR, I18N::CLIENT_ROOM_MSG_RETRY_ERROR))
+	retryErrorMsg(MakeChat(CHAT_MSG_TYPE_ERROR, I18N::CLIENT_ROOM_MSG_RETRY_ERROR)),
+	isPrivate(info.isPrivate),
+	rl(svc.logHandler.MakeRoomLogger(id)),
+	scriptLogger(svc.logHandler, hostInfo)
 {
 	rng.seed(info.seed);
+	if(rl)
+		rl->Log(I18N::ROOM_LOGGER_ROOM_NOTES, info.notes);
 }
+
+Context::~Context() = default;
 
 const YGOPro::HostInfo& Context::HostInfo() const
 {
 	return hostInfo;
+}
+
+bool Context::IsPrivate() const
+{
+	return isPrivate;
 }
 
 std::map<uint8_t, std::string> Context::GetDuelistsNames() const
@@ -128,6 +141,8 @@ void Context::MakeAndSendChat(Client& client, std::string_view msg)
 		SendToTeam(1U - client.Position().first, stocMsg);
 		SendToSpectators(stocMsg);
 	}
+	if(!isPrivate && rl)
+		rl->Log(I18N::ROOM_LOGGER_CHAT, client.Name(), client.Ip(), msg);
 }
 
 std::unique_ptr<YGOPro::Deck> Context::LoadDeck(
@@ -196,8 +211,8 @@ std::unique_ptr<YGOPro::STOCMsg> Context::CheckDeck(const YGOPro::Deck& deck) co
 			MakeDeckError(type, got, lim.min, lim.max));
 	};
 	// Check if the deck had any error while loading.
-	if(deck.Error() != 0U)
-		return MakeErrorPtr(CARD_UNKNOWN, deck.Error());
+	if(const auto error = deck.Error(); error != 0U)
+		return MakeErrorPtr(CARD_UNKNOWN, error);
 	// Check if the deck obeys the limits.
 	auto OutOfBound = [](const auto& lim, const CodeVector& vector) -> auto
 	{

@@ -1,10 +1,11 @@
 #include "../Context.hpp"
 
-#include <spdlog/spdlog.h>
-
 #include "../TimerAggregator.hpp"
 #include "../../I18N.hpp"
 #include "../../Core/IWrapper.hpp"
+#include "../../Service/LogHandler.hpp"
+#define LOG_INFO(...) svc.logHandler.Log(ErrorCategory::CORE, s.replayId, __VA_ARGS__)
+#define LOG_ERROR(...) svc.logHandler.Log(ErrorCategory::CORE, s.replayId, __VA_ARGS__)
 #include "../../Service/ReplayManager.hpp"
 #include "../../Service/ScriptProvider.hpp"
 #include "../../YGOPro/CardDatabase.hpp"
@@ -60,7 +61,7 @@ StateOpt Context::operator()(State::Dueling& s)
 	///////kdiy/////////
 #undef X
 	// Construct replay.
-	s.replayId = svc.replayManager.NewId();
+	scriptLogger.SetReplayID(s.replayId = svc.replayManager.NewId());
 	auto CurrentTime = []()
 	{
 		using namespace std::chrono;
@@ -84,7 +85,7 @@ StateOpt Context::operator()(State::Dueling& s)
 	{
 		*cdb,
 		svc.scriptProvider,
-		nullptr, // TODO
+		&scriptLogger,
 		seed,
 		HostInfo::OrDuelFlags(hostInfo.duelFlagsHigh, hostInfo.duelFlagsLow),
 		popt,
@@ -106,7 +107,7 @@ StateOpt Context::operator()(State::Dueling& s)
 	}
 	catch(Core::Exception& e)
 	{
-		spdlog::error(I18N::ROOM_DUELING_CORE_EXCEPT_CREATION, s.replayId, e.what());
+		LOG_ERROR(I18N::ROOM_DUELING_CORE_EXCEPT_CREATION, e.what());
 		return Finish(s, CORE_EXC_REASON);
 	}
 	OCG_NewCardInfo nci{};
@@ -121,7 +122,7 @@ StateOpt Context::operator()(State::Dueling& s)
 	}
 	catch(Core::Exception& e)
 	{
-		spdlog::error(I18N::ROOM_DUELING_CORE_EXCEPT_EXTRA_CARDS, s.replayId, e.what());
+		LOG_ERROR(I18N::ROOM_DUELING_CORE_EXCEPT_EXTRA_CARDS, e.what());
 		return Finish(s, CORE_EXC_REASON);
 	}
 	// Add main and extra deck cards for all players.
@@ -217,7 +218,7 @@ StateOpt Context::operator()(State::Dueling& s)
 	}
 	catch(Core::Exception& e)
 	{
-		spdlog::error(I18N::ROOM_DUELING_CORE_EXCEPT_STARTING, s.replayId, e.what());
+		LOG_ERROR(I18N::ROOM_DUELING_CORE_EXCEPT_STARTING, e.what());
 		return Finish(s, CORE_EXC_REASON);
 	}
 	// Start processing the duel.
@@ -270,7 +271,7 @@ StateOpt Context::operator()(State::Dueling& s, const Event::Response& e)
 	}
 	catch(Core::Exception& e)
 	{
-		spdlog::error(I18N::ROOM_DUELING_CORE_EXCEPT_RESPONSE, s.replayId, e.what());
+		LOG_ERROR(I18N::ROOM_DUELING_CORE_EXCEPT_RESPONSE, e.what());
 		return Finish(s, CORE_EXC_REASON);
 	}
 	if(const auto dfrOpt = Process(s); dfrOpt)
@@ -478,7 +479,7 @@ std::optional<Context::DuelFinishReason> Context::Process(State::Dueling& s)
 		uint8_t msgType = GetMessageType(msg);
 		if(msgType == MSG_RETRY)
 		{
-			spdlog::error(I18N::ROOM_DUELING_MSG_RETRY_RECEIVED, s.replayId);
+			LOG_ERROR(I18N::ROOM_DUELING_MSG_RETRY_RECEIVED);
 			uint8_t winner = 1U - s.replier->Position().first;
 			return DuelFinishReason{Reason::REASON_WRONG_RESPONSE, winner};
 		}
@@ -529,7 +530,7 @@ std::optional<Context::DuelFinishReason> Context::Process(State::Dueling& s)
 	}
 	catch(Core::Exception& e)
 	{
-		spdlog::error(I18N::ROOM_DUELING_CORE_EXCEPT_PROCESSING, s.replayId, e.what());
+		LOG_ERROR(I18N::ROOM_DUELING_CORE_EXCEPT_PROCESSING, e.what());
 		return CORE_EXC_REASON;
 	}
 	return std::nullopt;
@@ -549,7 +550,7 @@ StateVariant Context::Finish(State::Dueling& s, const DuelFinishReason& dfr)
 		}
 		catch(Core::Exception& e)
 		{
-			spdlog::info(I18N::ROOM_DUELING_CORE_EXCEPT_DESTRUCTOR, s.replayId, e.what());
+			LOG_INFO(I18N::ROOM_DUELING_CORE_EXCEPT_DESTRUCTOR, e.what());
 		}
 	}
 	tagg.Cancel(0U);

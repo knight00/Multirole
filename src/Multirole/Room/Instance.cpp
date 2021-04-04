@@ -9,14 +9,22 @@ Instance::Instance(CreateInfo& info)
 	tagg(*this),
 	notes(std::move(info.notes)),
 	pass(std::move(info.pass)),
-	isPrivate(!pass.empty()),
-	ctx({info.svc, tagg, info.id, info.seed, std::move(info.banlist), info.hostInfo, info.limits}),
+	ctx({
+		info.svc,
+		tagg,
+		info.id,
+		info.seed,
+		std::move(info.banlist),
+		info.hostInfo,
+		info.limits,
+		!pass.empty(),
+		notes}),
 	state(State::Waiting{nullptr})
 {}
 
 bool Instance::IsPrivate() const
 {
-	return isPrivate;
+	return ctx.IsPrivate();
 }
 
 bool Instance::Started() const
@@ -41,29 +49,32 @@ std::map<uint8_t, std::string> Instance::DuelistNames() const
 
 bool Instance::CheckPassword(std::string_view str) const
 {
-	return !isPrivate || pass == str;
+	return !IsPrivate() || pass == str;
 }
 
-bool Instance::CheckKicked(const boost::asio::ip::address& addr) const
+bool Instance::CheckKicked(std::string_view ip) const
 {
 	std::scoped_lock lock(mKicked);
-	return kicked.count(addr) > 0U;
+	return kicked.count(ip.data()) > 0U;
 }
 
-void Instance::TryClose()
+bool Instance::TryClose()
 {
+	if(Started())
+		return false;
 	auto self(shared_from_this());
 	boost::asio::post(strand,
 	[this, self]()
 	{
 		Dispatch(Event::Close{});
 	});
+	return true;
 }
 
-void Instance::AddKicked(const boost::asio::ip::address& addr)
+void Instance::AddKicked(std::string_view ip)
 {
 	std::scoped_lock lock(mKicked);
-	kicked.insert(addr);
+	kicked.insert(ip.data());
 }
 
 boost::asio::io_context::strand& Instance::Strand()
