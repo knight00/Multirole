@@ -2,6 +2,7 @@
 	"concurrencyHint": -1,
 	"lobbyListingPort": 13001,
 	"roomHostingPort": 13000,
+	"lobbyMaxConnections": 4,
 	"repos": [
 		{
 			"name": "scripts",

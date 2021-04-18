@@ -7,7 +7,7 @@
 # Multirole: A C++ server for EDOPro
 Multirole manages client connections to a singular lobby where rooms can be hosted and a list of said rooms fetched by other clients to join. It is in charge of creating, processing and logging duels by interfacing with [EDOPro's core](https://github.com/edo9300/ygopro-core).
 
-This project's original inception was to replace [srvpro](https://github.com/mycard/srvpro) due to how cumbersome it is to work with CoffeScript/JavaScript and its interface for native data structures, while also doubling as a learning excercise about high performance networking and serving as a very small documentation for YGOPro's ecosystem.
+This project's original inception was to replace [srvpro](https://github.com/mycard/srvpro) due to how cumbersome it is to work with CoffeScript/JavaScript and its interface for native data structures, while also doubling as a learning exercise about high performance networking and serving as a very small documentation for YGOPro's ecosystem.
 
 ## Features
 
@@ -51,6 +51,8 @@ The configuration file must be placed in the same working directory as Multirole
   * `concurrencyHint`: Number of threads that will be used by the room's asynchronous handling, putting a negative value lets Multirole decide the amount, which is usually the machine's CPU cores times 2.
 
   * `lobbyListingPort`: Port that will be used by the client to fetch the server's room list.
+
+  * `lobbyMaxConnections`: Maximum number of connections a single IP can have to the lobby. Any negative value disables this check.
 
   * `roomHostingPort`: Port that will be used by the client to host new rooms, or to join rooms that were previously fetched.
 
