@@ -1,35 +1,49 @@
 {
 	"concurrencyHint": -1,
-	"lobbyListingPort": 7922,
-	"roomHostingPort": 7911,
+	"lobbyListingPort": 13001,
+	"roomHostingPort": 13000,
 	"repos": [
 		{
 			"name": "scripts",
-			"remote": "https://github.com/ProjectIgnis/CardScripts",
+			"remote": "https://e.coding.net/edokcg/edokcg/CardScripts.git",
 			"path": "./sync/scripts/",
-			"webhookPort": 34343,
-			"webhookToken": "<change_this>"
+			"webhookPort": 2002,
+			"webhookToken": ""
 		},
 		{
 			"name": "databases",
-			"remote": "https://github.com/ProjectIgnis/BabelCDB",
+			"remote": "https://e.coding.net/edokcg/edokcg/BabelCDB.git",
 			"path": "./sync/databases/",
-			"webhookPort": 62672,
-			"webhookToken": "<change_this>"
+			"webhookPort": 2003,
+			"webhookToken": ""
+		},
+		{
+			"name": "kcg",
+			"remote": "https://e.coding.net/edokcg/edokcg/kcgedo_top.git",
+			"path": "./sync/kcg/",
+			"webhookPort": 2004,
+			"webhookToken": ""
+		},
+		{
+			"name": "zcg",
+			"remote": "http://perfectdicky:ff65588ff@edokcg.i234.me:3000/Edopro-KCG/zcg",
+			"path": "./sync/zcg/",
+			"webhookPort": 2007,
+			"webhookToken": ""
 		},
 		{
 			"name": "banlists",
-			"remote": "https://github.com/ProjectIgnis/LFLists",
+			"remote": "https://e.coding.net/edokcg/edokcg/LFLists.git",
 			"path": "./sync/banlists/",
-			"webhookPort": 49382,
-			"webhookToken": "<change_this>"
+			"webhookPort": 2005,
+			"webhookToken": ""
 		},
 		{
 			"name": "bin",
-			"remote": "https://github.com/ProjectIgnis/bin",
+			"remote": "https://e.coding.net/edokcg/edokcg/bin.git",
 			"path": "./sync/bin/",
-			"webhookPort": 43632,
-			"webhookToken": "<change_this>"
+			"webhookPort": 2006,
+			"webhookToken": ""
 		}
 	],
 	"banlistProvider": {
@@ -49,7 +63,7 @@
 	},
 	"dataProvider": {
 		"observedRepos": [
-			"databases"
+			"databases", "kcg", "zcg"
 		],
 		"fileRegex": ".*\\.cdb"
 	},
@@ -125,7 +139,7 @@
 	},
 	"scriptProvider": {
 		"observedRepos": [
-			"scripts"
+			"scripts", "kcg", "zcg"
 		],
 		"fileRegex": ".*\\.lua"
 	}
