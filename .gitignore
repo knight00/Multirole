@@ -5,3 +5,5 @@ obj/
 .vs/
 .idea/
 .DS_Store
+boost_1_75_0/
+.stignore
