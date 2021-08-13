@@ -282,6 +282,10 @@ std::unique_ptr<YGOPro::STOCMsg> Context::CheckDeck(const YGOPro::Deck& deck) co
 			return scope > SCOPE_OCG_TCG;
 		case ALLOWED_CARDS_WITH_PRERELEASE:
 			return (scope & (~SCOPE_OFFICIAL)) != 0U;
+		///////kdiy///////////////
+		case ALLOWED_CARDS_WITH_ANIME:
+			return (scope & (~(SCOPE_OFFICIAL | SCOPE_ANIME | SCOPE_SPEED | SCOPE_RUSH))) != 0U;
+		///////kdiy///////////////	
 		default:
 			return false;
 		}
