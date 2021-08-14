@@ -61,58 +61,58 @@ public:
 		uint8_t winner; // 2 == DRAW
 	};
 
-	Context(CreateInfo&& info);
-	~Context();
+	Context(CreateInfo&& info) noexcept;
+	~Context() noexcept;
 
-	const YGOPro::HostInfo& HostInfo() const;
-	bool IsPrivate() const;
-	std::map<uint8_t, std::string> GetDuelistsNames() const;
+	const YGOPro::HostInfo& HostInfo() const noexcept;
+	bool IsPrivate() const noexcept;
+	std::map<uint8_t, std::string> GetDuelistsNames() const noexcept;
 
 	/*** STATE AND EVENT HANDLERS ***/
 	// State/ChoosingTurn.cpp
-	StateOpt operator()(State::ChoosingTurn& s);
-	StateOpt operator()(State::ChoosingTurn& s, const Event::ChooseTurn& e);
-	StateOpt operator()(State::ChoosingTurn&, const Event::ConnectionLost& e);
-	StateOpt operator()(State::ChoosingTurn&, const Event::Join& e);
+	StateOpt operator()(State::ChoosingTurn& s) noexcept;
+	StateOpt operator()(State::ChoosingTurn& s, const Event::ChooseTurn& e) noexcept;
+	StateOpt operator()(State::ChoosingTurn&, const Event::ConnectionLost& e) noexcept;
+	StateOpt operator()(State::ChoosingTurn&, const Event::Join& e) noexcept;
 	// State/Closing.cpp
-	StateOpt operator()(State::Closing&);
-	StateOpt operator()(State::Closing&, const Event::Join& e);
+	StateOpt operator()(State::Closing&) noexcept;
+	StateOpt operator()(State::Closing&, const Event::Join& e) noexcept;
 	// State/Dueling.cpp
-	StateOpt operator()(State::Dueling& s);
-	StateOpt operator()(State::Dueling& s, const Event::ConnectionLost& e);
-	StateOpt operator()(State::Dueling& s, const Event::Join& e);
-	StateOpt operator()(State::Dueling& s, const Event::Response& e);
-	StateOpt operator()(State::Dueling& s, const Event::Surrender& e);
-	StateOpt operator()(State::Dueling& s, const Event::TimerExpired& e);
+	StateOpt operator()(State::Dueling& s) noexcept;
+	StateOpt operator()(State::Dueling& s, const Event::ConnectionLost& e) noexcept;
+	StateOpt operator()(State::Dueling& s, const Event::Join& e) noexcept;
+	StateOpt operator()(State::Dueling& s, const Event::Response& e) noexcept;
+	StateOpt operator()(State::Dueling& s, const Event::Surrender& e) noexcept;
+	StateOpt operator()(State::Dueling& s, const Event::TimerExpired& e) noexcept;
 	// State/Rematching.cpp
-	StateOpt operator()(State::Rematching&);
-	StateOpt operator()(State::Rematching&, const Event::ConnectionLost& e);
-	StateOpt operator()(State::Rematching& s, const Event::Rematch& e);
-	StateOpt operator()(State::Rematching&, const Event::Join& e);
+	StateOpt operator()(State::Rematching&) noexcept;
+	StateOpt operator()(State::Rematching&, const Event::ConnectionLost& e) noexcept;
+	StateOpt operator()(State::Rematching& s, const Event::Rematch& e) noexcept;
+	StateOpt operator()(State::Rematching&, const Event::Join& e) noexcept;
 	// State/RockPaperScissor.cpp
-	StateOpt operator()(State::RockPaperScissor&);
-	StateOpt operator()(State::RockPaperScissor& s, const Event::ChooseRPS& e);
-	StateOpt operator()(State::RockPaperScissor&, const Event::ConnectionLost& e);
-	StateOpt operator()(State::RockPaperScissor&, const Event::Join& e);
+	StateOpt operator()(State::RockPaperScissor&) noexcept;
+	StateOpt operator()(State::RockPaperScissor& s, const Event::ChooseRPS& e) noexcept;
+	StateOpt operator()(State::RockPaperScissor&, const Event::ConnectionLost& e) noexcept;
+	StateOpt operator()(State::RockPaperScissor&, const Event::Join& e) noexcept;
 	// State/Sidedecking.cpp
-	StateOpt operator()(State::Sidedecking&);
-	StateOpt operator()(State::Sidedecking&, const Event::ConnectionLost& e);
-	StateOpt operator()(State::Sidedecking& s, const Event::UpdateDeck& e);
-	StateOpt operator()(State::Sidedecking&, const Event::Join& e);
+	StateOpt operator()(State::Sidedecking&) noexcept;
+	StateOpt operator()(State::Sidedecking&, const Event::ConnectionLost& e) noexcept;
+	StateOpt operator()(State::Sidedecking& s, const Event::UpdateDeck& e) noexcept;
+	StateOpt operator()(State::Sidedecking&, const Event::Join& e) noexcept;
 	// State/Waiting.cpp
-	StateOpt operator()(State::Waiting&, const Event::Close&);
-	StateOpt operator()(State::Waiting& s, const Event::ConnectionLost& e);
-	StateOpt operator()(State::Waiting& s, const Event::Join& e);
-	StateOpt operator()(State::Waiting& s, const Event::ToDuelist& e);
-	StateOpt operator()(State::Waiting& s, const Event::ToObserver& e);
-	StateOpt operator()(State::Waiting&, const Event::Ready& e);
-	StateOpt operator()(State::Waiting& s, const Event::TryKick& e);
-	StateOpt operator()(State::Waiting& s, const Event::TryStart& e);
-	StateOpt operator()(State::Waiting&, const Event::UpdateDeck& e);
+	StateOpt operator()(State::Waiting&, const Event::Close&) noexcept;
+	StateOpt operator()(State::Waiting& s, const Event::ConnectionLost& e) noexcept;
+	StateOpt operator()(State::Waiting& s, const Event::Join& e) noexcept;
+	StateOpt operator()(State::Waiting& s, const Event::ToDuelist& e) noexcept;
+	StateOpt operator()(State::Waiting& s, const Event::ToObserver& e) noexcept;
+	StateOpt operator()(State::Waiting&, const Event::Ready& e) noexcept;
+	StateOpt operator()(State::Waiting& s, const Event::TryKick& e) noexcept;
+	StateOpt operator()(State::Waiting& s, const Event::TryStart& e) noexcept;
+	StateOpt operator()(State::Waiting&, const Event::UpdateDeck& e) noexcept;
 
 	// Chat handling is the same for all states.
 	template<typename State>
-	inline StateOpt operator()(State&, const Event::Chat& e)
+	inline StateOpt operator()(State&, const Event::Chat& e) noexcept
 	{
 		MakeAndSendChat(e.client, e.msg);
 		return std::nullopt;
@@ -120,14 +120,14 @@ public:
 
 	// Ignore rest of state entries.
 	template<typename S>
-	inline StateOpt operator()(S&)
+	inline StateOpt operator()(S&) noexcept
 	{
 		return std::nullopt;
 	}
 
 	// Ignore rest of state and event combinations.
 	template<typename S, typename E>
-	inline StateOpt operator()(S&, E&)
+	inline StateOpt operator()(S&, E&) noexcept
 	{
 		return std::nullopt;
 	}
@@ -159,53 +159,53 @@ private:
 	std::array<int32_t, 2U> wins{};
 
 	// Get if tiebreaker mode is enabled (match last until there is a winner).
-	bool IsTiebreaking() const;
+	bool IsTiebreaking() const noexcept;
 
 	// Get correctly swapped teams based on team1 going first or not.
-	uint8_t GetSwappedTeam(uint8_t team) const;
+	uint8_t GetSwappedTeam(uint8_t team) const noexcept;
 
 	// Get the number of duelists on each team.
-	std::array<uint8_t, 2U> GetTeamCounts() const;
+	std::array<uint8_t, 2U> GetTeamCounts() const noexcept;
 
 	// Utilities to send a message to multiple clients.
-	void SendToTeam(uint8_t team, const YGOPro::STOCMsg& msg);
-	void SendToSpectators(const YGOPro::STOCMsg& msg);
-	void SendToAll(const YGOPro::STOCMsg& msg);
-	void SendToAllExcept(Client& client, const YGOPro::STOCMsg& msg);
+	void SendToTeam(uint8_t team, const YGOPro::STOCMsg& msg) noexcept;
+	void SendToSpectators(const YGOPro::STOCMsg& msg) noexcept;
+	void SendToAll(const YGOPro::STOCMsg& msg) noexcept;
+	void SendToAllExcept(Client& client, const YGOPro::STOCMsg& msg) noexcept;
 
 	// Creates the PlayerEnter and TypeChange messages for each duelist
 	// and sends that information to the given client.
-	void SendDuelistsInfo(Client& client);
+	void SendDuelistsInfo(Client& client) noexcept;
 
 	// Adds given client to the spectators set, sends the join message as
 	// well as duelists information.
-	void SetupAsSpectator(Client& client, bool sendJoin = true);
+	void SetupAsSpectator(Client& client, bool sendJoin = true) noexcept;
 
 	// Creates and sends to all a chat message from a client.
-	void MakeAndSendChat(Client& client, std::string_view msg);
+	void MakeAndSendChat(Client& client, std::string_view msg) noexcept;
 
 	// Creates a YGOPro::Deck from the given vectors, making sure
 	// that the deck is only composed of non-zero card codes, also,
 	// sets its internal error to whatever was the lastest unknown card.
 	std::unique_ptr<YGOPro::Deck> LoadDeck(
 		const std::vector<uint32_t>& main,
-		const std::vector<uint32_t>& side) const;
+		const std::vector<uint32_t>& side) const noexcept;
 
 	// Check if a given deck is valid on the current room options.
-	std::unique_ptr<YGOPro::STOCMsg> CheckDeck(const YGOPro::Deck& deck) const;
+	std::unique_ptr<YGOPro::STOCMsg> CheckDeck(const YGOPro::Deck& deck) const noexcept;
 
 	/*** STATE SPECIFIC FUNCTIONS ***/
 	// State/Dueling.cpp
-	Client& GetCurrentTeamClient(State::Dueling& s, uint8_t team);
-	std::optional<DuelFinishReason> Process(State::Dueling& s);
-	StateVariant Finish(State::Dueling& s, const DuelFinishReason& dfr);
+	Client& GetCurrentTeamClient(State::Dueling& s, uint8_t team) noexcept;
+	std::optional<DuelFinishReason> Process(State::Dueling& s) noexcept;
+	StateVariant Finish(State::Dueling& s, const DuelFinishReason& dfr) noexcept;
 	static const YGOPro::STOCMsg& SaveToSpectatorCache(
 		State::Dueling& s,
-		YGOPro::STOCMsg&& msg);
+		YGOPro::STOCMsg&& msg) noexcept;
 	// State/RockPaperScissor.cpp
-	void SendRPS();
+	void SendRPS() noexcept;
 	// State/Waiting.cpp
-	bool TryEmplaceDuelist(Client& client, Client::PosType hint = {});
+	bool TryEmplaceDuelist(Client& client, Client::PosType hint = {}) noexcept;
 };
 
 } // namespace Room

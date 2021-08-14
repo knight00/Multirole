@@ -221,6 +221,26 @@ private:
 			hi.t0Count = std::clamp(hi.t0Count, 1, 3);
 			hi.t1Count = std::clamp(hi.t1Count, 1, 3);
 			hi.bestOf = std::max(hi.bestOf, 1);
+			// Remove Relay flag if its 1v1.
+			constexpr uint32_t DUEL_RELAY = 0x80;
+			bool isRelay = (hi.duelFlagsLow & DUEL_RELAY) != 0U;
+			if(isRelay && hi.t0Count == 1U && hi.t1Count == 1U)
+			{
+				isRelay = false;
+				hi.duelFlagsLow &= ~DUEL_RELAY;
+			}
+			// Deduce LP if its set to 0.
+			if(hi.startingLP == 0U)
+			{
+				if((hi.t0Count == 1U && hi.t1Count == 1U) || isRelay)
+				{
+					hi.startingLP = 8000U;
+				}
+				else // Tag mode.
+				{
+					hi.startingLP = std::max(hi.t0Count, hi.t1Count) * 8000U;
+				}
+			}
 			// Add flag that client should be setting.
 			// NOLINTNEXTLINE: DUEL_PSEUDO_SHUFFLE
 			hi.duelFlagsLow |= (!hi.dontShuffleDeck) ? 0x0 : 0x10;
