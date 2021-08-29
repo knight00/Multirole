@@ -284,7 +284,7 @@ std::unique_ptr<YGOPro::STOCMsg> Context::CheckDeck(const YGOPro::Deck& deck) co
 			return (scope & (~SCOPE_OFFICIAL)) != 0U;
 		///////kdiy///////////////
 		case ALLOWED_CARDS_WITH_ANIME:
-			return scope & SCOPE_ILLEGAL || scope & SCOPE_CUSTOM || scope & SCOPE_HIDDEN;
+			return scope & SCOPE_ILLEGAL || scope & SCOPE_CUSTOM || scope & SCOPE_SPEED || scope & SCOPE_HIDDEN;
 		///////kdiy///////////////	
 		default:
 			return false;
