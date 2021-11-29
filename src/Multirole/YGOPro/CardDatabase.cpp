@@ -146,7 +146,7 @@ bool CardDatabase::Merge(std::string_view absFilePath) noexcept
 	return true;
 }
 
-const OCG_CardData& CardDatabase::DataFromCode(uint32_t code) const
+const OCG_CardData& CardDatabase::DataFromCode(uint32_t code) const noexcept
 {
 	std::scoped_lock lock(mDataCache);
 	if(auto search = dataCache.find(code); search != dataCache.end())
@@ -162,7 +162,7 @@ const OCG_CardData& CardDatabase::DataFromCode(uint32_t code) const
 		setcodes[SETCODES] = 0U;
 		return setcodes.get();
 	};
-	OCG_CardData& cd = dataCache[code]; // implicit insertion
+	auto& cd = dataCache.emplace(code, OCG_CardData{}).first->second;
 	sqlite3_reset(sStmt);
 	sqlite3_bind_int(sStmt, 1, code);
 	if(sqlite3_step(sStmt) == SQLITE_ROW)
@@ -190,19 +190,19 @@ const OCG_CardData& CardDatabase::DataFromCode(uint32_t code) const
 	return cd;
 }
 
-void CardDatabase::DataUsageDone([[maybe_unused]] const OCG_CardData& data) const
+void CardDatabase::DataUsageDone([[maybe_unused]] const OCG_CardData& data) const noexcept
 {
 	// We could remove the elements here, but then what would be the
 	// the point of the cache?
 }
 
-const CardExtraData& CardDatabase::ExtraFromCode(uint32_t code) noexcept
+const CardExtraData& CardDatabase::ExtraFromCode(uint32_t code) const noexcept
 {
 	std::scoped_lock lock(mExtraCache);
 	if(auto search = extraCache.find(code); search != extraCache.end())
 		return search->second;
 	std::scoped_lock lock2(mDb);
-	CardExtraData& ced = extraCache[code]; // implicit insertion
+	auto& ced = extraCache.emplace(code, CardExtraData{}).first->second;
 	sqlite3_reset(s2Stmt);
 	sqlite3_bind_int(s2Stmt, 1, code);
 	if(sqlite3_step(s2Stmt) == SQLITE_ROW)

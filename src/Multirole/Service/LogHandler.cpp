@@ -18,7 +18,7 @@ namespace
 using Str = const char* const;
 
 template<typename JsonValue>
-constexpr Str AsStr(const JsonValue& jv)
+constexpr const char* AsStr(const JsonValue& jv)
 {
 	return jv.as_string().data();
 };
@@ -39,7 +39,7 @@ Service::LogHandler::LogHandler(boost::asio::io_context& ioCtx, const boost::jso
 		const auto& obj = cfg.at(category).at(name);
 		const auto& type = obj.at("type").as_string();
 		const auto& props = obj.at("properties").as_object();
-		const auto ridFormat = [&]() -> Str
+		const auto ridFormat = [&]() -> const char*
 		{
 			if(const auto s = props.find("ridFormat"); s != props.cend())
 				return AsStr(s->value());
@@ -122,7 +122,7 @@ std::unique_ptr<RoomLogger> Service::LogHandler::MakeRoomLogger(uint32_t roomId)
 // RoomLogger
 
 RoomLogger::RoomLogger(const boost::filesystem::path& path) :
-	f(path)
+	f(path.native())
 {
 	if(!f.is_open())
 		throw std::runtime_error(I18N::ROOM_LOGGER_FILE_IS_NOT_OPEN);
