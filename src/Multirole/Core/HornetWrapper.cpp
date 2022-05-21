@@ -1,6 +1,6 @@
 #include "HornetWrapper.hpp"
 
-#include <cinttypes>
+#include <cinttypes> // PRIXPTR
 #include <boost/date_time/posix_time/posix_time_types.hpp>
 
 #include "IDataSupplier.hpp"
@@ -12,11 +12,11 @@
 #include "../../Process.hpp"
 
 #ifndef MULTIROLE_HORNET_MAX_LOOP_COUNT
-#define MULTIROLE_HORNET_MAX_LOOP_COUNT 512U
+#define MULTIROLE_HORNET_MAX_LOOP_COUNT 256U
 #endif // MULTIROLE_HORNET_MAX_LOOP_COUNT
 
 #ifndef MULTIROLE_HORNET_MAX_WAIT_COUNT
-#define MULTIROLE_HORNET_MAX_WAIT_COUNT 5U
+#define MULTIROLE_HORNET_MAX_WAIT_COUNT 15U
 #endif // MULTIROLE_HORNET_MAX_WAIT_COUNT
 
 namespace Ignis::Multirole::Core
@@ -24,6 +24,16 @@ namespace Ignis::Multirole::Core
 
 namespace
 {
+
+static_assert(MULTIROLE_HORNET_MAX_LOOP_COUNT >= 1U);
+static_assert(MULTIROLE_HORNET_MAX_WAIT_COUNT >= 1U);
+
+// Time in seconds to wait before concluding that Hornet is unresponsive.
+const auto SECS_TO_KILL = boost::posix_time::seconds(1U);
+// Time in seconds per wait round to check if Hornet is dead. This multiplied by
+// MULTIROLE_HORNET_MAX_WAIT_COUNT is the total amount of time to spend before
+// giving up and throwing a exception.
+const auto SECS_PER_WAIT = boost::posix_time::seconds(2U);
 
 #include "../../Read.inl"
 #include "../../Write.inl"
@@ -56,8 +66,7 @@ HornetWrapper::HornetWrapper(std::string_view absFilePath) :
 	shmName(MakeHornetName(reinterpret_cast<uintptr_t>(this))),
 	shm(MakeShm(shmName)),
 	region(shm, ipc::read_write),
-	hss(nullptr),
-	hanged(false)
+	hss(nullptr)
 {
 	void* addr = region.get_address();
 	hss = new (addr) Hornet::SharedSegment();
@@ -74,8 +83,7 @@ HornetWrapper::HornetWrapper(std::string_view absFilePath) :
 	}
 	catch(Core::Exception& e)
 	{
-		// NOTE: Not necessary to check hanged or kill as HEARTBEAT is
-		// under our control.
+		// NOTE: Not check necessary as HEARTBEAT is under our control.
 		Process::CleanUp(proc);
 		DestroySharedSegment();
 		throw std::runtime_error(I18N::HWRAPPER_HEARTBEAT_FAILURE);
@@ -84,18 +92,50 @@ HornetWrapper::HornetWrapper(std::string_view absFilePath) :
 
 HornetWrapper::~HornetWrapper()
 {
-	// Even if process was hanged, there is no guarantee that it will be now
-	// and that hornet is not performing a wait on the condition variable.
-	// This avoids deadlocking when calling the shared segment destructor.
+	// Scenarios:
+	// 1. Hornet waits on CV as normal.
+	// 2. Hornet is dead.
+	// 3. Hornet is unresponsive.
+	//  a. It can become responsive at any point.
+	//  b. It could perform callback operation at any point.
+	try
 	{
+		constexpr auto EXIT = Hornet::Action::EXIT;
+		// Attempt to notify as intended.
 		Hornet::LockType lock(hss->mtx);
-		hss->act = Hornet::Action::EXIT;
+		hss->act = EXIT;
 		hss->cv.notify_one();
+		// We do a small timed wait to verify if Hornet is unresponsive.
+		if(!hss->cv.wait_for(lock, SECS_TO_KILL, [&](){return hss->act != EXIT;}))
+		{
+			// Hornet was unresponsive or dead. Lets guarantee that it is dead.
+			Process::Kill(proc);
+		}
+		else if(hss->act == Hornet::Action::EXIT_CONFIRMED)
+		{
+			// At this point, termination is imminent or already happened.
+		}
+		else if(hss->act != EXIT)
+		{
+			// It got responsive and tried to signal us *just* as we signal it
+			// to quit. In that case we signal it again with EXIT, except this
+			// time we never wait as it should terminate by itself in both cases
+			// where it signaled us with callback data or with NO_WORK.
+			hss->act = EXIT;
+			hss->cv.notify_one();
+		}
 	}
-	// If process is hanged we can't guarantee it'll handle our notification.
-	// Kill anyways.
-	if(hanged && Process::IsRunning(proc))
-		Process::Kill(proc);
+	catch(const ipc::interprocess_exception& e)
+	{
+		// The only time the code above would throw an exception is when we
+		// somehow tried to lock the mutex while Hornet held it and died while
+		// doing so; This might happen when we thought it was unresponsive,
+		// killed it, but then it took the lock before it was killed, very
+		// unlikely, but due to non-deterministic scheduling, can happen.
+	}
+	// Let's wait until Hornet has terminated, the try block above should
+	// guarantee that it has already happened or will happen imminently.
+	while(Process::IsRunning(proc));
 	Process::CleanUp(proc);
 	DestroySharedSegment();
 }
@@ -278,36 +318,24 @@ void HornetWrapper::DestroySharedSegment()
 
 void HornetWrapper::NotifyAndWait(Hornet::Action act)
 {
-	// Time to wait before checking for process being dead
-	auto NowPlusOffset = []() -> boost::posix_time::ptime
-	{
-		auto now = boost::posix_time::second_clock::universal_time();
-		now += boost::posix_time::seconds(10U);
-		return now;
-	};
 	Hornet::Action recvAct = Hornet::Action::NO_WORK;
 	std::size_t loopCount = 0U;
 	do
 	{
-		if(loopCount++ > MULTIROLE_HORNET_MAX_LOOP_COUNT)
-		{
-			hanged = true;
+		if(loopCount++ == MULTIROLE_HORNET_MAX_LOOP_COUNT)
 			throw Core::Exception(I18N::HWRAPPER_EXCEPT_MAX_LOOP_COUNT);
-		}
-		// Atomically fetch next action, if any.
+		// Atomically perform action and fetch next one, if any.
 		{
 			std::size_t waitCount = 0U;
 			Hornet::LockType lock(hss->mtx);
 			hss->act = act;
 			hss->cv.notify_one();
-			while(!hss->cv.timed_wait(lock, NowPlusOffset(), [&](){return hss->act != act;}))
+			while(!hss->cv.wait_for(lock, SECS_PER_WAIT, [&](){return hss->act != act;}))
 			{
 				if(!Process::IsRunning(proc))
 					throw Core::Exception(I18N::HWRAPPER_EXCEPT_PROC_CRASHED);
-				if(waitCount++ <= MULTIROLE_HORNET_MAX_WAIT_COUNT)
-					continue;
-				hanged = true;
-				throw Core::Exception(I18N::HWRAPPER_EXCEPT_PROC_UNRESPONSIVE);
+				if(++waitCount >= MULTIROLE_HORNET_MAX_WAIT_COUNT)
+					throw Core::Exception(I18N::HWRAPPER_EXCEPT_PROC_UNRESPONSIVE);
 			}
 			recvAct = hss->act;
 		}
@@ -370,6 +398,7 @@ void HornetWrapper::NotifyAndWait(Hornet::Action act)
 		case Hornet::Action::NO_WORK:
 		case Hornet::Action::HEARTBEAT:
 		case Hornet::Action::EXIT:
+		case Hornet::Action::EXIT_CONFIRMED:
 		case Hornet::Action::OCG_GET_VERSION:
 		case Hornet::Action::OCG_CREATE_DUEL:
 		case Hornet::Action::OCG_DESTROY_DUEL:

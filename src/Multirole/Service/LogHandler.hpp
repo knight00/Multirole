@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string_view>
 
 #include <boost/asio/io_context.hpp>
@@ -35,7 +36,7 @@ public:
 	std::unique_ptr<RoomLogger> MakeRoomLogger(uint32_t roomId) const noexcept;
 
 	void Log(ServiceType svc, Level lvl, std::string_view str) const noexcept;
-	void Log(ErrorCategory cat, uint64_t replayId, std::string_view str) const noexcept;
+	void Log(ErrorCategory cat, uint64_t replayId, uint32_t turnCounter, std::string_view str) const noexcept;
 
 	// Helper overloads used to format stuff nicely.
 	template<typename... Args>
@@ -45,9 +46,9 @@ public:
 	}
 
 	template<typename... Args>
-	inline void Log(ErrorCategory cat, uint64_t replayId, std::string_view str, Args&& ...args) const noexcept
+	inline void Log(ErrorCategory cat, uint64_t replayId, uint32_t turnCounter, std::string_view str, Args&& ...args) const noexcept
 	{
-		Log(cat, replayId, fmt::format(str, std::forward<Args&&>(args)...));
+		Log(cat, replayId, turnCounter, fmt::format(str, std::forward<Args&&>(args)...));
 	}
 private:
 	const bool logRooms;

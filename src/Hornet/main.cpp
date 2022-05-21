@@ -29,7 +29,7 @@ static void* handle{nullptr};
 // Methods
 void NotifyAndWait(Ignis::Hornet::Action act)
 {
-	Ignis::Hornet::Action recvAct = Ignis::Hornet::Action::NO_WORK;
+	auto recvAct = Ignis::Hornet::Action::NO_WORK;
 	{
 		Ignis::Hornet::LockType lock(hss->mtx);
 		hss->act = act;
@@ -37,10 +37,10 @@ void NotifyAndWait(Ignis::Hornet::Action act)
 		hss->cv.wait(lock, [&](){return hss->act != act;});
 		recvAct = hss->act;
 	}
-	// The only scenario where this would not be CB_DONE is when
-	// multirole declares this horned as hanged. We have to terminate to
-	// guarantee that the resources will not be in usage when multirole
-	// destroys the shared segment.
+	// The only scenario where this would not be CB_DONE is when Multirole was
+	// trying to signal us to quit and we were unresponsive. We have to
+	// terminate to guarantee that the resources will not be in usage when the
+	// shared segment is destroyed.
 	if(recvAct != Ignis::Hornet::Action::CB_DONE)
 		std::terminate();
 }
@@ -114,19 +114,22 @@ int LoadSO(const char* soPath)
 void MainLoop()
 {
 	using namespace Ignis::Hornet;
-	bool quit = false;
-	do
+	for(;;)
 	{
 		{
 			LockType lock(hss->mtx);
+			hss->act = Action::NO_WORK;
+			hss->cv.notify_one();
 			hss->cv.wait(lock, [&](){return hss->act != Action::NO_WORK;});
 		}
 		switch(hss->act)
 		{
 		case Action::EXIT:
 		{
-			quit = true;
-			break;
+			Ignis::Hornet::LockType lock(hss->mtx);
+			hss->act = Action::EXIT_CONFIRMED;
+			hss->cv.notify_one();
+			return; // NOTE: Returning, not breaking!
 		}
 		case Action::OCG_GET_VERSION:
 		{
@@ -262,6 +265,7 @@ void MainLoop()
 		// Explicitly ignore these, in case we ever add more functionality...
 		case Action::NO_WORK:
 		case Action::HEARTBEAT:
+		case Action::EXIT_CONFIRMED:
 		case Action::CB_DATA_READER:
 		case Action::CB_SCRIPT_READER:
 		case Action::CB_LOG_HANDLER:
@@ -269,9 +273,7 @@ void MainLoop()
 		case Action::CB_DONE:
 			break;
 		}
-		hss->act = Action::NO_WORK;
-		hss->cv.notify_one();
-	}while(!quit);
+	}
 }
 
 int main(int argc, char* argv[])

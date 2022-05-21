@@ -1,14 +1,14 @@
 project('multirole', 'c', 'cpp',
 	default_options : ['cpp_std=c++17', 'b_vscrt=static_from_buildtype'],
 	license : 'AGPL-3.0-or-later',
-	meson_version : '>=0.60.0',
+	meson_version : '>=0.59.3',
 	version : '1.0.1'
 )
 
 static_deps = host_machine.system() == 'windows'
 
 atomic_dep  = meson.get_compiler('cpp').find_library('atomic', required : false)
-boost_dep   = dependency('boost', version : '>=1.75', modules : ['filesystem'], static : static_deps)
+boost_dep   = dependency('boost', version : '>=1.78', modules : ['filesystem'], static : static_deps)
 dl_dep      = meson.get_compiler('cpp').find_library('dl', required : false)
 fmt_dep     = dependency('fmt', version : '>=6.0.0', static : static_deps)
 libgit2_dep = dependency('libgit2', static : static_deps)
