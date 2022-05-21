@@ -108,8 +108,7 @@ StateOpt Context::operator()(State::Dueling& s) noexcept
 		LoadScript("constant.lua");
 		LoadScript("utility.lua");
 		////kdiy////////////
-		////kdiy////////////
-		LoadScript("Kcore.lua");
+		LoadScript("Kcore.lua");
 		LoadScript("Kconstant.lua");
 		////kdiy////////////
 	}

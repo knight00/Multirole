@@ -1,0 +1,29 @@
+Step 0.
+1st time Server setup:
+>>sudo apt update && apt install tasksel -y
+>>sudo tasksel
+choose gnome (space to confirm)
+>>sudo systemctl set-default graphical.target 
+>>sudo apt install xrdp -y 
+>>sudo systemctl status xrdp 
+>>sudo usermod -a -G ssl-cert xrdp
+>>sudo systemctl restart xrdp
+
+Login Remote Desktop:
+>>sudo adduser kcg
+>>sudo usermod -aG sudo kcg
+
+Install Synthcing
+Setup Synthcing: Add ignore folder "sync"
+
+>>sudo chmod -R 777 ./
+Read Dockfile for instructions: Add sudo on every commands
+
+>>sudo cp /usr/local/boost/lib/libboost_filesystem.so /usr/lib/libboost_filesystem.so.1.75.0
+
+
+Step 1.
+Read Dockfile for instructions: Add sudo on every commands
+Every upgrade:
+>>cd build
+>>python3 ./area-zero.py
