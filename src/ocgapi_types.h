@@ -38,7 +38,7 @@ typedef struct OCG_CardData {
 	int32_t level;
 	////kdiy//////////
 	uint32_t attribute;
-	uint32_t race;
+	uint64_t race;
 	int32_t attack;
 	int32_t defense;
 	uint32_t lscale;
@@ -61,7 +61,7 @@ typedef int (*OCG_ScriptReader)(void* payload, OCG_Duel duel, const char* name);
 typedef void (*OCG_LogHandler)(void* payload, const char* string, int type);
 
 typedef struct OCG_DuelOptions {
-	uint32_t seed;
+	uint64_t seed[4U];
 	uint64_t flags;
 	OCG_Player team1;
 	OCG_Player team2;
@@ -73,6 +73,7 @@ typedef struct OCG_DuelOptions {
 	void* payload3; /* relayed to errorHandler */
 	OCG_DataReaderDone cardReaderDone;
 	void* payload4; /* relayed to cardReader */
+	uint8_t enableUnsafeLibraries;
 }OCG_DuelOptions;
 
 typedef struct OCG_NewCardInfo {

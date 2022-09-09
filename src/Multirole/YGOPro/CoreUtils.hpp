@@ -67,7 +67,7 @@ struct Query
 	int32_t link;
 	////////////kdiy///////	
 	uint32_t attribute;
-	uint32_t race;
+	uint64_t race;
 	int32_t attack;
 	int32_t defense;
 	int32_t bAttack;
