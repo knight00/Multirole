@@ -28,14 +28,13 @@ enum ExtraRule
 	EXTRA_RULE_DUELIST_KINGDOM     = 0x40,
 	EXTRA_RULE_DIMENSION_DUEL      = 0x80,
 	EXTRA_RULE_TURBO_DUEL          = 0x100,
-	EXTRA_RULE_DOUBLE_DECK         = 0x200,
+	EXTRA_RULE_RULE_OF_THE_DAY     = 0x200,
 	EXTRA_RULE_COMMAND_DUEL        = 0x400,
 	EXTRA_RULE_DECK_MASTER         = 0x800,
 	EXTRA_RULE_ACTION_DUEL         = 0x1000,
-	EXTRA_RULE_DECK_LIMIT_20       = 0x2000,
 	////kdiy///////
-	EXTRA_RULE_KCG_System          = 0x4000,
-	EXTRA_RULE_Field_System        = 0x8000
+	EXTRA_RULE_KCG_System          = 0x2000,
+	EXTRA_RULE_Field_System        = 0x4000
 	////kdiy///////	
 };
 
@@ -62,7 +61,7 @@ struct HostInfo
 	uint8_t allowed; // OCG/TCG, etc
 	uint8_t mode; // NOTE: UNUSED
 	uint8_t duelRule; // NOTE: UNUSED
-	uint8_t dontCheckDeck;
+	uint8_t dontCheckDeckContent;
 	uint8_t dontShuffleDeck;
 	uint32_t startingLP;
 	uint8_t startingDrawCount;
