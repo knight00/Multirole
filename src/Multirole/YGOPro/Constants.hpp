@@ -14,8 +14,8 @@
 #define LOCATION_PZONE   0x200
 #define LOCATION_ALL     0x3FF
 /////kdiy///////////
-#define LOCATION_RMZONE  0x400
-#define LOCATION_RSZONE  0x800
+#define LOCATION_RMZONE  0x2000
+#define LOCATION_RSZONE  0x4000
 /////kdiy///////////
 
 #define MSG_RETRY                1
@@ -134,6 +134,9 @@
 #define SCOPE_RUSH       0x200
 #define SCOPE_LEGEND     0x400
 #define SCOPE_HIDDEN     0x1000
+/////zdiy/////
+#define SCOPE_ZCG        0x2000
+/////zdiy/////
 #define SCOPE_OCG_TCG    (SCOPE_OCG | SCOPE_TCG)
 #define SCOPE_OFFICIAL   (SCOPE_OCG | SCOPE_TCG | SCOPE_PRERELEASE)
 
