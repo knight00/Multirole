@@ -254,6 +254,9 @@ MsgDistType GetMessageDistributionType(const Msg& msg) noexcept
 	case MSG_SHUFFLE_EXTRA:
 	case MSG_SET:
 	case MSG_MOVE:
+	////kdiy/////////
+	case MSG_CHANGE:
+	////kdiy/////////
 	case MSG_DRAW:
 	case MSG_TAG_SWAP:
 	{

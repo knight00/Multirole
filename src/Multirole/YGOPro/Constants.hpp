@@ -113,6 +113,9 @@
 #define MSG_PLAYER_HINT          165
 #define MSG_MATCH_KILL           170
 // #define MSG_CUSTOM_MSG   180
+////kdiy/////////
+#define MSG_CHANGE               200
+////kdiy/////////
 
 #define POS_FACEUP_ATTACK    0x1
 #define POS_FACEDOWN_ATTACK  0x2
