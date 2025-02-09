@@ -1,24 +1,40 @@
 Step 0.
 1st time Server setup:
+>>sudo -i
 >>sudo apt update && apt install tasksel -y
 >>sudo tasksel
 choose gnome (space to confirm)
 >>sudo systemctl set-default graphical.target 
 >>sudo apt install xrdp -y 
 >>sudo systemctl status xrdp 
+press ctrl-z exit
 >>sudo usermod -a -G ssl-cert xrdp
 >>sudo systemctl restart xrdp
-
-Login Remote Desktop:
 >>sudo adduser kcg
 >>sudo usermod -aG sudo kcg
 
+Login Remote Desktop:
 Install Synthcing
 Setup Synthcing: Add ignore folder "sync"
+Open port 22000 for synthcing
 
+Install dependencies
 >>sudo chmod -R 777 ./
-Read Dockfile or x64-linux.yml for instructions("run:" parts): 
---Add sudo on every commands
---modify boost installation location to /usr/local/boost(--prefix=...)
+>>sudo apt-get --no-install-recommends --yes install libfmt-dev liblzma-dev libgit2-dev libsqlite3-dev libssl-dev ninja-build
+>>sudo apt-get --no-install-recommends --yes install ca-certificates libfmt7 liblzma5 libgit2-1.1 libsqlite3-0 libssl1.1 libtcmalloc-minimal4 
+>>sudo apt-get --no-install-recommends --yes install build-essential libgoogle-perftools-dev g++ python3 python3-pip ninja-build pkg-config tar bzip2 wget
+>>cd boost_1_83_0
+>>./bootstrap.sh --prefix=/usr/local --with-libraries=filesystem
+>>./b2 install
+>> cd ..
 
-(ignore)>>sudo cp /usr/local/boost/lib/libboost_filesystem.so /usr/lib/libboost_filesystem.so.1.79.0
+Build
+>>BOOST_ROOT=/usr/local/ sudo meson setup build -Dbuildtype=release -Dstrip=true -Db_lto=true -Db_ndebug=true -Duse_tcmalloc=enabled
+>>sudo meson compile -C build
+>>sudo cp /usr/local/lib/libboost_filesystem.so /usr/lib/libboost_filesystem.so.1.83.0
+>>sudo chmod -R 777 ./
+>>cd build
+
+COPY etc/config.json to build
+COPY util/area-zero.sh, area-zero.py to build
+>>python3 ./area-zero.py

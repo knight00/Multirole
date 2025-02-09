@@ -395,6 +395,9 @@ std::unique_ptr<YGOPro::STOCMsg> Context::CheckDeck(const YGOPro::Deck& deck) co
 	for(const auto code : codes)
 	{
 		const uint32_t totalCount = GetTotalCount(code);
+		 ///////kdiy///////////////
+        if(code != 102 && code != 213)
+        ///////kdiy///////////////
 		if(totalCount > 3U)
 			return MakeErrorPtr(CARD_MORE_THAN_3, code);
 		const auto& ced = cdb->ExtraFromCode(code);
