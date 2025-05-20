@@ -5,13 +5,6 @@ env:
 jobs:
   x86-windows:
     runs-on: windows-2019
-    if: >-
-      !(
-        contains(github.event.head_commit.message, '[ci skip]') ||
-        contains(github.event.head_commit.message, '[skip ci]') ||
-        contains(github.event.head_commit.message, '[actions skip]') ||
-        contains(github.event.head_commit.message, '[skip actions]')
-      )
     steps:
     - uses: actions/checkout@v1
       with:
@@ -24,14 +17,14 @@ jobs:
     - name: Install dependencies
       uses: lukka/run-vcpkg@v7
       with:
-        vcpkgGitCommitId: 8eb57355a4ffb410a2e94c07b4dca2dffbee8e50
+        vcpkgGitCommitId: 095a29ce59608465032c3747307dd0009b3e089c
         vcpkgTriplet: ${{ env.VCPKG_TRIPLET }}
         vcpkgArguments: boost-asio boost-filesystem boost-date-time boost-interprocess boost-json fmt libgit2 openssl sqlite3
     - name: Fix Boost.Filesystem library location
       shell: bash
       run: |
         VCPKG_LIBRARYDIR=$VCPKG_ROOT/installed/$VCPKG_TRIPLET/lib
-        cp $VCPKG_LIBRARYDIR/boost_filesystem-vc140-mt.lib $VCPKG_LIBRARYDIR/libboost_filesystem-vc140-mt-s.lib
+        cp $VCPKG_LIBRARYDIR/boost_filesystem-vc142-mt-x32-1_88.lib $VCPKG_LIBRARYDIR/libboost_filesystem-vc142-mt-s.lib
     - name: Set x86 windows build tools as default
       uses: ilammy/msvc-dev-cmd@v1
       with:
@@ -53,7 +46,7 @@ jobs:
         cp etc/config.json $RDIR/
         sed -i "s/libocgcore\\\\\\\.so/ocgcore\\\\\\\.dll/g" $RDIR/config.json
     - name: Upload artifacts
-      uses: actions/upload-artifact@v2.2.4
+      uses: actions/upload-artifact@v4
       with:
         name: Multirole
         path: Multirole/
