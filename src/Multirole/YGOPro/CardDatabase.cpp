@@ -72,10 +72,16 @@ DETACH toMerge;
 )";
 
 static constexpr const char* SEARCH_STMT =
+///kdiy////
+// R"(
+// SELECT id,alias,setcode,type,atk,def,level,race,attribute
+// FROM datas WHERE datas.id = ?;
+// )";
 R"(
-SELECT id,alias,setcode,type,atk,def,level,race,attribute
-FROM datas WHERE datas.id = ?;
-)";
+	SELECT id,alias,setcode,type,atk,def,level,race,attribute,ot
+	FROM datas WHERE datas.id = ?;
+	)";
+///kdiy////
 
 static constexpr const char* SEARCH2_STMT =
 R"(
@@ -180,12 +186,15 @@ const OCG_CardData& CardDatabase::DataFromCode(uint32_t code) const noexcept
 		if ((dbLevel & 0x800000FF) > 0xf) {
 			cd.level = -((dbLevel & 0x800000FF) - 0xf);
 		} else
-		/////////////kdiy///////		
+		/////////////kdiy///////
 		cd.level = dbLevel & 0x800000FF;
 		cd.lscale = (dbLevel >> 24U) & 0xFF;
 		cd.rscale = (dbLevel >> 16U) & 0xFF;
 		cd.race = sqlite3_column_int64(sStmt, 7);
 		cd.attribute = sqlite3_column_int(sStmt, 8);
+		/////////////kdiy///////
+		cd.ot = sqlite3_column_int(sStmt, 9);
+		/////////////kdiy///////
 	}
 	return cd;
 }
