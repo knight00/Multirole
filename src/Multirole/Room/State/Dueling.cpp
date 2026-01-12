@@ -70,6 +70,7 @@ StateOpt Context::operator()(State::Dueling& s) noexcept
 	///////kdiy/////////
 	X(EXTRA_RULE_KCG_System,         85U);
 	X(EXTRA_RULE_Field_System,       86U);
+	X(EXTRA_RULE_No_Shuffle,         842U);
 	///////kdiy/////////
 #undef X
 	// Construct replay.

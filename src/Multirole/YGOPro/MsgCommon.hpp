@@ -35,7 +35,8 @@ enum ExtraRule
 	////kdiy///////
 	EXTRA_RULE_KCG_System          = 0x2000,
 	EXTRA_RULE_Field_System        = 0x4000
-	////kdiy///////	
+	EXTRA_RULE_No_Shuffle          = 0x8000
+	////kdiy///////
 };
 
 struct ClientVersion
