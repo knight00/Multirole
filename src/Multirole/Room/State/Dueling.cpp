@@ -56,14 +56,18 @@ StateOpt Context::operator()(State::Dueling& s) noexcept
 	// about magic numbers we already know.
 	X(EXTRA_RULE_SEALED_DUEL,        511005092U); // NOLINT
 	X(EXTRA_RULE_BOOSTER_DUEL,       511005093U); // NOLINT
-	X(EXTRA_RULE_DESTINY_DRAW,       511004000U); // NOLINT
+	///////kdiy/////////
+	// X(EXTRA_RULE_DESTINY_DRAW,       511004000U); // NOLINT
+	///////kdiy/////////
 	X(EXTRA_RULE_CONCENTRATION_DUEL, 511004322U); // NOLINT
 	X(EXTRA_RULE_BOSS_DUEL,          95000000U);  // NOLINT
 	X(EXTRA_RULE_BATTLE_CITY,        511004014U); // NOLINT
 	X(EXTRA_RULE_DUELIST_KINGDOM,    511002621U); // NOLINT
 	X(EXTRA_RULE_DIMENSION_DUEL,     511600002U); // NOLINT
 	X(EXTRA_RULE_TURBO_DUEL,         110000000U); // NOLINT
-	X(EXTRA_RULE_RULE_OF_THE_DAY,    777777777U); // NOLINT
+	///////kdiy/////////
+	// X(EXTRA_RULE_RULE_OF_THE_DAY,    777777777U); // NOLINT
+	///////kdiy/////////
 	X(EXTRA_RULE_COMMAND_DUEL,       95200000U);  // NOLINT
 	X(EXTRA_RULE_DECK_MASTER,        153999999U); // NOLINT
 	X(EXTRA_RULE_ACTION_DUEL,        151999999U); // NOLINT
@@ -71,6 +75,8 @@ StateOpt Context::operator()(State::Dueling& s) noexcept
 	X(EXTRA_RULE_KCG_System,         85U);
 	X(EXTRA_RULE_Field_System,       86U);
 	X(EXTRA_RULE_No_Shuffle,         842U);
+	X(EXTRA_RULE_OPPLP,              843U);
+	X(EXTRA_RULE_OPPHAND,            844U);
 	///////kdiy/////////
 #undef X
 	// Construct replay.
